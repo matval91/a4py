@@ -10,11 +10,9 @@ from scipy import interpolate, integrate
 import scipy.io as sio
 import a4py.classes.Bfield as ascot_Bfield
 import a4py.plot.input.plot_input as plot_input
+import os
+import MDSplus as mds
 
-# if on TCV, load also mdsplus
-cluster = platform.uname()[1]
-if cluster[-7:] == 'epfl.ch':
-    import MDSplus as mds
 
 colours = ['k','b','r','c','g',\
            'k','b','r','c','g',\
@@ -1104,6 +1102,10 @@ class TCV_mds(profiles):
 
     Connects to TCV tree and reads the data from there. ne, Te from thomson, Ti from cxrs
 
+    Example:
+        dictIn = {'shot':58823, 't':0.9, 'nrho':51, 'zeff':2.}
+        p=a4p.TCV_mds(dictIn)
+
     Parameters:
         indict (dict): 
             |  'shot' (int): shot number,
@@ -1134,7 +1136,7 @@ class TCV_mds(profiles):
         self.Z = [1, 6  ]
         self.coll_mode = np.ones(self.nion+1)
         # open the tree
-        self.tree = mds.Tree('tcv_shot', self.shot)
+        self.connect_to_server()
 
         # we build the appropriate dictionary similarly to what done
         # for the 1D signal
@@ -1148,6 +1150,38 @@ class TCV_mds(profiles):
         print("===================")
         print("\n")
 
+    def connect_to_server(self):
+        """ connects to MDS server
+	This scripts checks in which server you are, and if you are not in a lac*.epfl.ch server it will open a connection to lac.epfl.ch
+
+        Parameters:
+            None
+        Arguments:
+            tree (obj): returns the tree object where to read data from	
+	"""
+
+        server=os.popen('hostname').read()
+        if 'epfl.ch' not in server:
+            conn = mds.Connection('tcvdata.epfl.ch')
+            conn.openTree('tcv_shot', self.shot)
+            self.tree = conn
+            print("You are in server "+server+", so I'll open a connection")
+        else:
+            self.tree = mds.Tree('tcv_shot', self.shot)	    
+
+    def _readsignal(self, signame):
+        """ reads signal
+        Interface to read the signal depending if it is a tree or a connection
+        Parameters:
+            None
+        Arguments:
+            signal (arr): the data you want
+	"""
+        try:
+            signal = self.tree.getNode(signame)
+        except AttributeError:
+            signal = self.tree.get(signame)
+        return signal
 
     def _getBivecSpline(self):
         """ reads and spline of input signals
@@ -1163,21 +1197,21 @@ class TCV_mds(profiles):
 
         for k in self.signals.keys():
             print('Reading signal ' + self.signals[k]['string'])
-            tim = self.tree.getNode(self.signals[k]['string']).getDimensionAt(0).data()
+            tim = self._readsignal(self.signals[k]['string']).getDimensionAt(0).data()
             if k=='ti':
-                tim = self.tree.getNode(self.signals[k]['string']).getDimensionAt(1).data()
+                tim = self._readsignal(r'\RESULTS::CXRS.PROFFIT:TIME').data()
             _idx = np.argmin(tim-self.t < 0)
             tim = tim[_idx]
             if k=='ti':
                 # CXRS
-                data = self.tree.getNode(self.signals[k]['string']).data()[_idx,:]
-                rhop = self.tree.getNode(self.signals[k]['string']).getDimensionAt(0).data()[_idx,:]
+                data = self._readsignal(self.signals[k]['string']).data()[_idx,:]
+                rhop = self._readsignal(r'\RESULTS::CXRS.PROFFIT:RHO').data()[_idx,:]
                 indsort = np.argsort(rhop)
                 data = data[indsort]
                 rhop = rhop[indsort]
             else:
-                data = self.tree.getNode(self.signals[k]['string']).data()[:, _idx]
-                rhop = self.tree.getNode(r'\results::thomson.profiles.auto:rho').data()
+                data = self._readsignal(self.signals[k]['string']).data()[:, _idx]
+                rhop = self._readsignal(r'\results::thomson.profiles.auto:rho').data()
             dummy = interpolate.interp1d(rhop, data, fill_value='extrapolate')
             self._brep[k] = dict([('spline', dummy)])
 
@@ -1196,8 +1230,8 @@ class TCV_mds(profiles):
             None
         """
         try:
-            self._brep
-        except:
+            self._brep['ti'].mean()
+        except AttributeError:
             self._getBivecSpline()
             
         self.rsig = {}

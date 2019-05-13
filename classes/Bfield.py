@@ -8,7 +8,7 @@ from __future__ import print_function
 import numpy as np
 import h5py, math
 import matplotlib.pyplot as plt
-import ReadEQDSK
+import a4py.classes.ReadEQDSK as ReadEQDSK
 from scipy.interpolate import griddata
 import scipy.optimize
 import scipy.interpolate as interp
