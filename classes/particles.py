@@ -822,13 +822,15 @@ def _readwall(device):
     """
     if device == 'JT60SA':
         in_w_fname = '/home/vallar/ASCOT/runs/JT60SA/002/input.wall_2d'
+        if platform.uname().node=='spcpc182':
+            in_w_fname = '/home/vallar/WORK/JT-60SA/wall/input.wall_2d'
     elif device == 'TCV':
         cluster = platform.uname()[1]
         if cluster[-7:] == 'epfl.ch':
             in_w_fname = '/home/vallar/TCV/input.wall_2d_FW'
         else:
             in_w_fname = '/home/vallar/ASCOT/runs/TCV/57850/input.wall_2d'
-
+    print(in_w_fname)
     wall = np.loadtxt( in_w_fname, dtype=float, unpack=True, skiprows=1)
             
     R_w = wall[0,:]
