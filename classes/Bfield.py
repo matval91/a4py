@@ -305,12 +305,12 @@ class Bfield_eqdsk:
             
         plot_input.plot_Bfield(self,f)
 
-    def write(self):
+    def write(self,suff=''):
         """
         Function calling the two methods to write the header and the bkg
         """
-        self.write_head()
-        self.write_bkg()
+        self.write_head(suff)
+        self.write_bkg(suff)
 
     def build_lim(self):
         """ limiter building
@@ -578,7 +578,7 @@ class Bfield_eqdsk:
         self.Bz_pert = self.Br
         
         
-    def write_head(self):
+    def write_head(self,suff=''):
         """ writing header
         Write to input.magn_header file
         
@@ -595,8 +595,10 @@ class Bfield_eqdsk:
             raise ValueError
 
         out_fname = 'input.magn_header'
-        if self.devnam=='TCV':
+        if self.devnam=='TCV' and suff=='':
             out_fname += '_'+self.infile[6:18]
+        else:
+            out_fname += '_'+suff
 			
         print('OUT header '+out_fname)
         outfile = open(out_fname, 'w')
@@ -646,7 +648,7 @@ class Bfield_eqdsk:
         outfile.close()
         
 
-    def write_bkg(self):
+    def write_bkg(self,suff=''):
         """ write bkg
         Write to input.magn_bkg file
         
@@ -670,9 +672,12 @@ class Bfield_eqdsk:
             
         bkg=self.bkg
         out_fname = 'input.magn_bkg'
-        if self.devnam=='TCV':
+        if self.devnam=='TCV' and suff=='':
             out_fname += '_'+self.infile[6:18]
-
+        else:
+            out_fname += '_'+suff
+            
+        
         print('OUT bkg '+out_fname)
         outfile = open(out_fname, 'w') 
     
