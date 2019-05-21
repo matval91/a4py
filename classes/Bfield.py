@@ -12,7 +12,7 @@ import a4py.classes.ReadEQDSK as ReadEQDSK
 from scipy.interpolate import griddata
 import scipy.optimize
 import scipy.interpolate as interp
-import a4py.utils.cocos_transform as cocos
+import utils.cocos_transform as cocos
 import a4py.plot.input.plot_input as plot_input
 
 class Bfield_ascot:
