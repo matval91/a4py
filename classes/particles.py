@@ -830,7 +830,7 @@ def _readwall(device):
             in_w_fname = '/home/vallar/TCV/input.wall_2d_FW'
         else:
             in_w_fname = '/home/vallar/ASCOT/runs/TCV/57850/input.wall_2d'
-    print(in_w_fname)
+
     wall = np.loadtxt( in_w_fname, dtype=float, unpack=True, skiprows=1)
             
     R_w = wall[0,:]

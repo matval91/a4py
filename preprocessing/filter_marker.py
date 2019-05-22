@@ -11,6 +11,9 @@ def filter_marker(input_fname='input.particles', \
     Script to filter the input.particles file (useful for wall-losses studies) 
     basing on rho and xi
 
+    markers, markers_towrite, pitch, indnew = filter_marker.filter_marker(input_fname, \
+    fname_out, minrho, minxi, maxxi, sign, max_markers, max_rho)
+
     Parameters:
     | input_fname (str)   :  name of file to read (default input.particles)
     | fname_out   (str)   : name of file where to write (default input.particles_filt)
@@ -23,6 +26,7 @@ def filter_marker(input_fname='input.particles', \
     | markers_towrite (array) : matrix with data of markers selected
     | markers         (array) : matrix with read data
     | pitch           (array) : pitch of data to be written
+    | indnew          (array) : array with the indices of the selected markers
     """
 
     fin = open(input_fname,"r")
@@ -87,5 +91,5 @@ def filter_marker(input_fname='input.particles', \
     header = "".join(header)
     fmt = ['%i','%7.6e','%i','%7.6e','%7.6e', '%7.6e','%7.6e','%7.6e','%7.6e','%7.6e','%7.6e','%7.6e','%7.6e','%7.6e','%7.6e','%7.6e','%7.6e','%7.6e','%7.6e']
     fmt[0] = '%i'; fmt[2] = '%i'; fmt[12] = '%i'; fmt[14] = '%i'
-    np.savetxt(fname_out, markers_towrite, fmt=fmt,header=header, footer='#EOF', newline='\n', comments='')
-    return markers, markers_towrite, pitch
+    if fname_out!='': np.savetxt(fname_out, markers_towrite, fmt=fmt,header=header, footer='#EOF', newline='\n', comments='')
+    return markers, markers_towrite, pitch, indnew

@@ -323,21 +323,21 @@ class distribution_1d:
         i_tot = self.slices_summed[0,:,12]*1e-3
         if np.mean(i_tot)<0:
             i_tot = -1*i_tot
-        plot_article(1,[self.rho, i_tot],[''],r'$\rho$', 'j (kA/$m^2$)', self.infile_n, ax=ax)
+        plot_article(1,[self.rho, i_tot],[''],r'$\rho_{POL}$', 'j (kA/$m^2$)', self.infile_n, ax=ax)
     
     def plot_n(self, ax=0):
         """
         Plot fast particle density
         """
         n = self.slices_summed[0,:,0]
-        plot_article(1,[self.rho, n],[''],r'$\rho$', r'n (1/$m^3$)', self.infile_n, ax=ax)
+        plot_article(1,[self.rho, n],[''],r'$\rho_{POL}$', r'n (1/$m^3$)', self.infile_n, ax=ax)
 
     def plot_p(self, ax=0):
         """
         Plot fast particle pressure
         """
         p = self.slices_summed[0,:,13]
-        plot_article(1,[self.rho, p*1e-3],[''],r'$\rho$', r'P (kN/$m^2$)', self.infile_n, ax=ax)
+        plot_article(1,[self.rho, p*1e-3],[''],r'$\rho_{POL}$', r'P (kN/$m^2$)', self.infile_n, ax=ax)
 
     def _plot_pe(self):
         """
@@ -353,14 +353,14 @@ class distribution_1d:
 
     def plot_pe(self, ax=0):
         nlines, lines, labels = self._plot_pe()
-        plot_article(nlines, lines, labels, r'$\rho$', 'p (kW/$m^3$)', self.infile_n, ax=ax)
+        plot_article(nlines, lines, labels, r'$\rho_{POL}$', 'p (kW/$m^3$)', self.infile_n, ax=ax)
 
     def plot_pe_total(self, ax=0):
         nlines, lines, labels = self._plot_pe()
         rho = lines[0,:]
         data = np.sum(lines[1:,:], axis=0)
         lines = np.array([rho, data])
-        plot_article(nlines, lines, labels, r'$\rho$', 'p$_e$ (kW/$m^3$)', self.infile_n, ax=ax)
+        plot_article(nlines, lines, labels, r'$\rho_{POL}$', 'p$_e$ (kW/$m^3$)', self.infile_n, ax=ax)
 
     def _plot_pi(self):
         """
@@ -386,14 +386,14 @@ class distribution_1d:
 
     def plot_pi(self, ax=0):
         nlines, lines, labels = self._plot_pi()
-        plot_article(nlines, lines, labels, r'$\rho$', 'p (kW/$m^3$)', self.infile_n, ax=ax)
+        plot_article(nlines, lines, labels, r'$\rho_{POL}$', 'p (kW/$m^3$)', self.infile_n, ax=ax)
 
     def plot_pi_total(self, ax=0):
         nlines, lines, labels = self._plot_pi()
         rho = lines[0,:]
         data = np.sum(lines[1:,:], axis=0)
         lines = np.array([rho, data]);  labels=['i']; nlines=1
-        plot_article(nlines, lines, labels, r'$\rho$', 'p$_i$ (kW/$m^3$)', self.infile_n, ax=ax) 
+        plot_article(nlines, lines, labels, r'$\rho_{POL}$', 'p$_i$ (kW/$m^3$)', self.infile_n, ax=ax) 
 
     def plot_totalpower(self, ax=0):
         """
@@ -427,7 +427,7 @@ class distribution_1d:
             else:
                 tci3 = self.slices[0,0,:,ind+3]
                 plot_article(5,[self.rho, tjxb, tjxb+tce, tjxb+tci1, tjxb+tci2, tjxb+tci3],\
-                            ['jxB','el.', 'i1', 'i2', 'i3'],r'$\rho$', r'Torque density (N m^{-2})', self.infile_n)        
+                            ['jxB','el.', 'i1', 'i2', 'i3'],r'$\rho_{POL}$', r'Torque density (N m^{-2})', self.infile_n)        
         else:
             plot_article(3,[self.rho, tjxb,  tjxb+tce, tjxb+tci1], ['jxB','el.', 'i1'], r'$\rho$', 'p (MW/$m^3$)', self.infile_n)
 
@@ -642,7 +642,7 @@ class TCV_1d(distribution_1d):
             self.fibp[i] = weight/volumes[i]
 
         if plot_flag == 1:
-            plot_article(1,[rho, self.fibp], [''], r'$\rho$', r'Fast ion birth profile $1/(s\cdot m^3)$', '')
+            plot_article(1,[rho, self.fibp], [''], r'$\rho_{POL}_{POL}$', r'Fast ion birth profile $1/(s\cdot m^3)$', '')
     
     def TCV_plot_all(self, *args):
         """
@@ -958,10 +958,10 @@ class SA_1d(distribution_1d):
         y_tot  = y_ppar+y_pper+y_nnb
         values = [self.rho, y_tot, y_ppar, y_pper, y_nnb]
         if 'ylim' in kwargs:
-            plot_article(len(values)-1, values, labels2, r'$\rho$',\
+            plot_article(len(values)-1, values, labels2, r'$\rho_{POL}$',\
                          ylabel, self.infile_n, ylim=kwargs['ylim'])
         else:
-            plot_article(len(values)-1, values, labels2, r'$\rho$',\
+            plot_article(len(values)-1, values, labels2, r'$\rho_{POL}$',\
                          ylabel, self.infile_n)
                          
                          
@@ -1098,7 +1098,7 @@ class SA_1d(distribution_1d):
         title=bb_fname
         if bb_fname=='':
             title=self.id
-        plot_article(np.shape(ylines)[0]-1, ylines, label, r'$\rho$', 
+        plot_article(np.shape(ylines)[0]-1, ylines, label, r'$\rho_{POL}$', 
                      r'Fast ion birth profile $1/(s\cdot m^3)$', title, ylim=ylim, fname=fname)
                          
                          
@@ -1147,7 +1147,7 @@ class distribution_2d:
         elif 'rho' in self.dict_dim and 'phi' in self.dict_dim:
             x = self.dict_dim['rho']
             y = z[0,:]*1.602e-19
-            _plot_1d(x,y, r'$\rho$', 'fdist', ax=ax)
+            _plot_1d(x,y, r'$\rho_{POL}$', 'fdist', ax=ax)
             
 
     def integrate_range_Ep(self, dim_range):
@@ -1693,10 +1693,10 @@ class frhophipe(distribution_2d):
         self.zplot = dist_toplot
         if 'fname' in kwargs:
             _plot_2d(r'$\xi$', 'E [keV]', \
-                          title=r'$\rho$='+str(slicerho), \
+                          title=r'$\rho_{POL}$='+str(slicerho), \
                           fname=kwargs['fname'])
         else:
-            _plot_2d(r'$\xi$', 'E [keV]', title=r'$\rho$='+str(slicerho))
+            _plot_2d(r'$\xi$', 'E [keV]', title=r'$\rho_{POL}$='+str(slicerho))
 
        
 class frzv(distribution_2d):
