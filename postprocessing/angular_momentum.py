@@ -60,6 +60,10 @@ def calculate_angmom(partdict, hdr, bkg):
 	
 	pphi = calculate_angmom(particles)
 	
+	The canonical angular momentum dimensionally is [kg*m2*s-1]=[E][dt]
+	The poloidal flux dimensionally is [Vs]
+	pol.flux x charge x R = [V dt][q][dx] = [F][dt][dx] = [E][dt]
+
 	Arguments
 		partdict (dict): dict with the variables
 		hdr (dict) : magnetic field with psiaxis and psiedge (poloidal fluxes) 
@@ -76,12 +80,15 @@ def calculate_angmom(partdict, hdr, bkg):
 	m = partdict['m']
 	R = partdict['R']
 	vphi = np.copy(partdict['vphi'])
-	Ze = partdict['Z']
-	vphi *= m*1.6e-27/(Ze*1.602e-19*b_param(R)*R)
+	Z = partdict['Z']
+	#vphi *= m*1.6e-27/(Z*1.602e-19*b_param(R)*R)
 	#canangmom = m*R*vphi-Ze*polflux
-	canangmom = R*vphi-polflux
-	canangmom/= edge['flux']
+	mom_unit = 1.602e-19*b_param(axis['R'])*axis['R']**2
+	fac1=m*1.66e-27*(R-axis['R'])*vphi/mom_unit
+	fac2=Z*1.602e-19*polflux/mom_unit
+	canangmom = (fac1-fac2)/edge['flux']
 	return canangmom
+
 
 def calculate_muE(partdict, hdr, bkg):
 	"""calc mu
@@ -103,7 +110,7 @@ def calculate_muE(partdict, hdr, bkg):
 	mu = m*v_perp**2/(2.*B)
 	b_param, bphi, axis, edge = _param_B(hdr,bkg)
 	mu *= b_param(axis['R'])/E
-	return mu,E
+	return mu
 
 def _param_B(hdr, bkg):
 	"""dict with B
@@ -151,7 +158,6 @@ def _lost_HFS(E, hdr, bkg):
 	y2 = 0
 	x3 = -edge['flux']+np.sqrt(2*E)*(axis['R'])*b_param(axis['R'])/np.min(bphi)
 	y3 = 0
-	print(x1,x2,x3)
 	A,B,C = np.polyfit([x1/edge['flux'],x2/edge['flux'],x3/edge['flux']],[y1,y2,y3],2)
 	return A,B,C, x2/edge['flux'], x3/edge['flux']
 
@@ -170,7 +176,9 @@ def _lost_LFS(E, hdr, bkg):
 	Parameters:
 	"""
 	b_param, bphi, axis, edge = _param_B(hdr,bkg)
-
+	mom_unit = 1.602e-19*b_param(axis['R'])*axis['R']**2
+	#norm_v=2*1.66e-27*(R-axis['R'])/mom_unit
+	norm_flux=1*1.602e-19/mom_unit
 	x1 = -edge['flux']
 	y1 = E/np.max(bphi)/(E/b_param(axis['R']))
 	# vacuum approximation
@@ -246,31 +254,35 @@ def plot_lossregion(E,hdr,bkg):
 	"""
 	common_style()
 	A,B,C,x2,x3 = _lost_HFS(E,hdr,bkg)
-	x_lost_HFS = np.linspace(x2,x3,100)
+	x_lost_HFS = np.linspace(x2,x3,1000)
 	y_lost_HFS = np.polyval([A,B,C], x_lost_HFS)
+	xmaxhfs=x3
 
 	A,B,C,x2,x3 = _lost_LFS(E,hdr,bkg)
-	x_lost_LFS = np.linspace(x2,x3,100)
+	x_lost_LFS = np.linspace(x2,x3,1000)
 	y_lost_LFS = np.polyval([A,B,C], x_lost_LFS)
 
 	A,B,C,x2,x3 = _magaxis(E,hdr,bkg)
-	x_magaxis = np.linspace(x2,x3,100)
+	x_magaxis = np.linspace(x2,x3,1000)
 	y_magaxis = np.polyval([A,B,C], x_magaxis)
-
+	xminmagaxis=x2
 	xtr, y_up, y_low = _trapp_passing(E,hdr,bkg)
 
 	f=plt.figure(figsize=(8,8));
 	ax=f.add_subplot(111)
 	ax.plot(x_lost_HFS, y_lost_HFS, label='lost HFS')
 	ax.plot(x_lost_LFS, y_lost_LFS, label='lost LFS')
-	plt.fill_between(x_lost_HFS,y_lost_HFS, color='k', alpha=0.2 )
-	plt.fill_between(x_lost_LFS,y_lost_LFS, color='white')
+	plt.fill_between(x_lost_HFS[x_lost_HFS<-1.],y_lost_HFS[x_lost_HFS<-1.], color='k', alpha=1)
 	ax.plot(x_magaxis, y_magaxis, label='Mag. Axis')
 	ax.plot(xtr, y_up, 'r', label='trapped')
 	ax.plot(xtr, y_low, 'r')
+	plt.fill_between(x_lost_HFS[x_lost_HFS>-1.],y_lost_HFS[x_lost_HFS>-1.], color='k', alpha=1)
+	plt.fill_between(xtr[xtr>-1.], y_low[xtr>-1.], color='w')
+	plt.fill_between(x_lost_LFS,y_lost_LFS, color='white')
 	ax.vlines(x=-1, ymin=np.max(y_lost_LFS), ymax=np.max(y_lost_HFS), color='r')
-
-	ax.set_xlabel(r'$P_\zeta$')
+	if xmaxhfs>xminmagaxis:
+		print('There is overlap...need to plot')
+	ax.set_xlabel(r'$P_\zeta$/$\psi_w$')
 	ax.set_ylabel(r'$\frac{\mu B_0}{E}$')
 	ax.set_title(r'E='+str(E))
 	ax.legend(loc='best'); ax.grid('on')

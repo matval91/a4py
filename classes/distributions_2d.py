@@ -57,7 +57,7 @@ class distribution_2d(fdist_superclass):
             y = self.dict_dim['z']
             wallrz = [self.R_w, self.z_w]
             surf = [self.Rsurf, self.zsurf, self.RZsurf]
-            _plot_2d(x, y, 'R [m]', 'z [m]', Id = self.id, \
+            _plot_2d(x, y, 'R [m]', 'z [m]', \
                      wallrz=wallrz, surf=surf, ax=ax, dist=z*1e-18, cblabel=r'n ($10^{18}$/$m^3$)')
         elif 'rho' in self.dict_dim and 'phi' in self.dict_dim:
             x = self.dict_dim['rho']

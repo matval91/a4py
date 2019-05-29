@@ -14,7 +14,7 @@ from __future__ import print_function
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-from scipy import interpolate
+from scipy import interpolate, integrate
 import os.path, math, time
 import collections
 import a4py.classes.particles as ascot_particles
@@ -339,6 +339,7 @@ class distribution_1d:
         p = self.slices_summed[0,:,13]
         plot_article(1,[self.rho, p*1e-3],[''],r'$\rho_{POL}$', r'P (kN/$m^2$)', self.infile_n, ax=ax)
 
+
     def _plot_pe(self):
         """
         Plots power deposited to electrons
@@ -603,6 +604,34 @@ class distribution_1d:
         param_taus = interpolate.interp1d(rho,taus)
         taus_mean = np.trapz(param_taus(self.rho)*self._volumes)/np.sum(self._volumes)
         return param_ec, ec_mean, param_taus, taus_mean
+
+    def _calc_beta(self):
+    	""" calculates beta_FI
+		Fast ion beta could be calculated as 
+
+		Bp = 2mu0/(B0)**2*1/V_{plasma} int_VOL (drho V'(rho)P_fi(rho))
+
+    	"""
+    	mu_0 = 4*np.pi*1e-7
+    	local_n = 40
+
+    	B0 = self.infile['sanityChecks/b0'][()]
+    	V = self.volumes; vtot=np.sum(self.volumes)
+    	_paramrho = interpolate.interp1d(np.linspace(0,1,len(self.rho)), self.rho)
+    	_newrho = _paramrho(np.linspace(0,1,local_n))
+
+    	_paramV = interpolate.interp1d(self.rho, V)
+    	V = _paramV(_newrho)
+    	Vprime = np.concatenate(([0], np.diff(V)/np.diff(_newrho)))
+    	p = self.slices_summed[0,:,13]
+    	_paramp = interpolate.interp1d(self.rho, p)
+    	p = _paramp(_newrho)
+
+    	integral = integrate.trapz(p, V)
+    	self.beta_FI_0d = 2*mu_0/(vtot*(B0**2))*integral   	
+    	self.beta_FI    = 2*mu_0*p/B0**2
+    	self.beta_FI_0d2 = integrate.trapz(self.beta_FI, V)/vtot
+    	print((self.beta_FI_0d2-self.beta_FI_0d)/self.beta_FI_0d)
 
 
 class TCV_1d(distribution_1d):
