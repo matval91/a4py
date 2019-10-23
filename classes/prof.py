@@ -1118,6 +1118,10 @@ class TCV_mds(profiles):
         |  'ne':'tcv_shot::top.results.thomson.profiles.auto:ne'
         |  'te':'tcv_shot::top.results.thomson.profiles.auto:te'
         |  'ti':'tcv_shot::top.results.cxrs.proffit:ti'
+
+        |  'ne': 'tcv_shot::top.results.conf:ne'
+        |  'te': 'tcv_shot::top.results.conf:te'
+        |  'ti': 'tcv_shot::top.results.conf:ti'
     
     """
     def __init__(self, indict):
@@ -1140,9 +1144,13 @@ class TCV_mds(profiles):
 
         # we build the appropriate dictionary similarly to what done
         # for the 1D signal
-        self.signals = {'ne': {'string': r'\tcv_shot::top.results.thomson.profiles.auto:ne'},
-                        'te': {'string': r'\tcv_shot::top.results.thomson.profiles.auto:te'},
-                        'ti': {'string': r'\tcv_shot::top.results.cxrs.proffit:ti'}}
+        #self.signals = {'ne': {'string': r'\tcv_shot::top.results.thomson.profiles.auto:ne'},
+        #                'te': {'string': r'\tcv_shot::top.results.thomson.profiles.auto:te'},
+        #                'ti': {'string': r'\tcv_shot::top.results.cxrs.proffit:ti'}}
+        
+        self.signals = {'ne': {'string': r'\tcv_shot::top.results.conf:ne'},
+                        'te': {'string': r'\tcv_shot::top.results.conf:te'},
+                        'ti': {'string': r'\tcv_shot::top.results.conf:ti'}}
 
         print("\n")
         print("===================")
@@ -1197,21 +1205,11 @@ class TCV_mds(profiles):
 
         for k in self.signals.keys():
             print('Reading signal ' + self.signals[k]['string'])
-            tim = self._readsignal(self.signals[k]['string']).getDimensionAt(0).data()
-            if k=='ti':
-                tim = self._readsignal(r'\RESULTS::CXRS.PROFFIT:TIME').data()
+            tim = self._readsignal(self.signals[k]['string']).getDimensionAt(1).data()
             _idx = np.argmin(tim-self.t < 0)
             tim = tim[_idx]
-            if k=='ti':
-                # CXRS
-                data = self._readsignal(self.signals[k]['string']).data()[_idx,:]
-                rhop = self._readsignal(r'\RESULTS::CXRS.PROFFIT:RHO').data()[_idx,:]
-                indsort = np.argsort(rhop)
-                data = data[indsort]
-                rhop = rhop[indsort]
-            else:
-                data = self._readsignal(self.signals[k]['string']).data()[:, _idx]
-                rhop = self._readsignal(r'\results::thomson.profiles.auto:rho').data()
+            data = self._readsignal(self.signals[k]['string']).data()[_idx, :]
+            rhop = self._readsignal(self.signals[k]['string']).getDimensionAt(0).data()
             dummy = interpolate.interp1d(rhop, data, fill_value='extrapolate')
             self._brep[k] = dict([('spline', dummy)])
 
@@ -1231,7 +1229,7 @@ class TCV_mds(profiles):
         """
         try:
             self._brep['ti'].mean()
-        except AttributeError:
+        except:
             self._getBivecSpline()
             
         self.rsig = {}
@@ -1287,7 +1285,7 @@ class TCV_mds(profiles):
         """
         suffix = '_'+str(self.shot)+'_'+str(int(self.t*1e3))
         self.write_input(suffix=suffix)
-
+        
 class input_datfiles(profiles):
     """
     Reads an input.plasma_1d file:

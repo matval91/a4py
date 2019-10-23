@@ -409,7 +409,7 @@ class distribution_1d:
         #plot_article(nlines, lines, labels, r'$\rho$', 'p (kW/$m^3$)', self.infile_n, ax=ax)
         if self.nions==1:
             _plot_1d(self.rho, linese[1,:]+linesi[0,:], ax=ax)            
-        elif self.nion == 2:
+        elif self.nions == 2:
             _plot_1d(self.rho, linese[1,:]+linesi[0,:]+linesi[1,:], ax=ax)
 
     def plot_totaltorque(self):

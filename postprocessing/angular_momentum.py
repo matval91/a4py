@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from utils.plot_utils import common_style
 
+
+
 def _find_parabola(x1, y1, x2, y2, x3, y3):
 	'''
 	Adapted and modifed to get the unknowns for defining a parabola:
@@ -25,6 +27,14 @@ def _find_parabola(x1, y1, x2, y2, x3, y3):
 	B     = (x3*x3 * (y1-y2) + x2*x2 * (y3-y1) + x1*x1 * (y2-y3)) / denom;
 	C     = (x2 * x3 * (x2-x3) * y1+x3 * x1 * (x3-x1) * y2+x1 * x2 * (x1-x2) * y3) / denom;
 	return A,B,C
+
+def _momentum_unit(hdr, bkg):
+	"""
+	"""
+	b_param, bphi, axis, edge = _param_B(hdr,bkg)
+	mom_unit=(1.602e-19*b_param(axis['R'])/1.66e-27)*(1.66e-27)*(axis['R'])**2
+	mom_unit=1./mom_unit
+	return mom_unit
 
 def convert_arrpart_to_dict(particles):
 	"""	
@@ -75,19 +85,23 @@ def calculate_angmom(partdict, hdr, bkg):
 	rho = partdict['rho']
 	PFxx = hdr['PFxx'] #fluxes at AXIS and X POINT
 	polflux_norm = rho**2
-	polflux = polflux_norm*(edge['flux']-axis['flux'])+axis['flux']
+	polflux = polflux_norm*(PFxx[0]-PFxx[1])+PFxx[1]
 
 	m = partdict['m']
 	R = partdict['R']
 	vphi = np.copy(partdict['vphi'])
 	Z = partdict['Z']
 	#vphi *= m*1.6e-27/(Z*1.602e-19*b_param(R)*R)
-	#canangmom = m*R*vphi-Ze*polflux
-	mom_unit = 1.602e-19*b_param(axis['R'])*axis['R']**2
-	fac1=m*1.66e-27*(R-axis['R'])*vphi/mom_unit
-	fac2=Z*1.602e-19*polflux/mom_unit
-	canangmom = (fac1-fac2)/edge['flux']
+	canangmom = m*1.66e-27*R*vphi-Z*1.602e-19*polflux
+
+        #the canonical ang. momentum should be multiplied by 1/(omega_0^2*mp*R0)
+        #to get the correct units
+	mom_unit= _momentum_unit(hdr, bkg)
+	#fac1=m*1.66e-27*(R-axis['R'])*vphi/mom_unit
+	#fac2=Z*1.602e-19*polflux/mom_unit
+	canangmom *= mom_unit
 	return canangmom
+
 
 
 def calculate_muE(partdict, hdr, bkg):
@@ -135,13 +149,13 @@ def _param_B(hdr, bkg):
 	
 	return b_param, bphi, axis, edge
 
-def _lost_HFS(E, hdr, bkg):
+def _lost_HFS(E, Z, hdr, bkg):
 	"""
 	see R. White, page 76
 
 	Parabola with:
 	maximum at mu=E/Bmin
-	intercepts with (mu=0) at P=-psiedge+-sqrt(2E)g(edge)/Bmin
+	intercepts with (mu=0) at P=-psiedge+-sqrt(2E)g(axis)/Bmin
 	where g=R*Btor
 
 	Arguments:
@@ -150,24 +164,27 @@ def _lost_HFS(E, hdr, bkg):
 	Parameters:
 	"""
 	b_param, bphi, axis, edge = _param_B(hdr,bkg)
-
-	x1 = -edge['flux']
+	mom_unit = _momentum_unit(hdr, bkg)
+        
+	x1 = -edge['flux']*Z*1.602e-19*mom_unit
 	y1 = E/np.min(bphi)/(E/b_param(axis['R']))
 	# vacuum approximation
-	x2 = -edge['flux']-np.sqrt(2*E)*(axis['R'])*b_param(axis['R'])/np.min(bphi)
+	x2 = -edge['flux']*Z*1.602e-19-np.sqrt(2*E)*(axis['R'])*b_param(axis['R'])/np.min(bphi)*np.sqrt(1.66e-27)
+	x2 *= mom_unit
 	y2 = 0
-	x3 = -edge['flux']+np.sqrt(2*E)*(axis['R'])*b_param(axis['R'])/np.min(bphi)
+	x3 = -edge['flux']*Z*1.602e-19+np.sqrt(2*E)*(axis['R'])*b_param(axis['R'])/np.min(bphi)*np.sqrt(1.66e-27)
+	x3 *= mom_unit
 	y3 = 0
-	A,B,C = np.polyfit([x1/edge['flux'],x2/edge['flux'],x3/edge['flux']],[y1,y2,y3],2)
-	return A,B,C, x2/edge['flux'], x3/edge['flux']
+	A,B,C = np.polyfit([x1,x2,x3],[y1,y2,y3],2)
+	return A,B,C, x2, x3
 
-def _lost_LFS(E, hdr, bkg):
+def _lost_LFS(E,Z, hdr, bkg):
 	"""
 	see R. White, page 76
 
 	Parabola with:
 	maximum at mu=E/Bmin
-	intercepts with (mu=0) at P=-psiedge+-sqrt(2E)g(edge)/Bmin
+	intercepts with (mu=0) at P=-psiedge+-sqrt(2E)g(edge)/Bmax
 	where g=R*Btor
 
 	Arguments:
@@ -176,20 +193,20 @@ def _lost_LFS(E, hdr, bkg):
 	Parameters:
 	"""
 	b_param, bphi, axis, edge = _param_B(hdr,bkg)
-	mom_unit = 1.602e-19*b_param(axis['R'])*axis['R']**2
-	#norm_v=2*1.66e-27*(R-axis['R'])/mom_unit
-	norm_flux=1*1.602e-19/mom_unit
-	x1 = -edge['flux']
+	b_param, bphi, axis, edge = _param_B(hdr,bkg)
+	mom_unit = _momentum_unit(hdr, bkg)
+        
+	x1 = -edge['flux']*Z*1.602e-19*mom_unit
 	y1 = E/np.max(bphi)/(E/b_param(axis['R']))
 	# vacuum approximation
-	x2 = -edge['flux']-np.sqrt(2*E)*axis['R']*b_param(axis['R'])/np.max(bphi)
+	x2 = -edge['flux']*Z*1.602e-19-np.sqrt(2*E)*(axis['R'])*b_param(axis['R'])/np.max(bphi)*np.sqrt(1.66e-27)
+	x2 *= mom_unit
 	y2 = 0
-	x3 = -edge['flux']+np.sqrt(2*E)*axis['R']*b_param(axis['R'])/np.max(bphi)
+	x3 = -edge['flux']*Z*1.602e-19+np.sqrt(2*E)*(axis['R'])*b_param(axis['R'])/np.max(bphi)*np.sqrt(1.66e-27)
+	x3 *= mom_unit
 	y3 = 0
-
-	A,B,C = np.polyfit([x1/edge['flux'],x2/edge['flux'],x3/edge['flux']],[y1,y2,y3],2)
-	#A,B,C = _find_parabola(x1/edge['flux'],y1,x2/edge['flux'],y2,x3/edge['flux'],y3)
-	return A,B,C, x2/edge['flux'], x3/edge['flux']
+	A,B,C = np.polyfit([x1,x2,x3],[y1,y2,y3],2)
+	return A,B,C, x2, x3
 
 
 def _magaxis(E, hdr, bkg):
@@ -207,20 +224,21 @@ def _magaxis(E, hdr, bkg):
 	Parameters:
 	"""
 	b_param, bphi, axis, edge = _param_B(hdr,bkg)
+	mom_unit = _momentum_unit(hdr, bkg)
 
 	x1 = 0
 	y1 = 1
 	# vacuum approximation
-	x2 = -np.sqrt(2*E)*axis['R']
+	x2 = -np.sqrt(2*E)*axis['R']*np.sqrt(1.66e-27)*mom_unit
 	y2 = 0
-	x3 = np.sqrt(2*E)*axis['R']
+	x3 = np.sqrt(2*E)*axis['R']*np.sqrt(1.66e-27)*mom_unit
 	y3 = 0
 
-	A,B,C = np.polyfit([x1/edge['flux'],x2/edge['flux'],x3/edge['flux']],[y1,y2,y3],2)
+	A,B,C = np.polyfit([x1,x2,x3],[y1,y2,y3],2)
 	#A,B,C = _find_parabola(x1/edge['flux'],y1,x2/edge['flux'],y2,x3/edge['flux'],y3)
-	return A,B,C, x2/edge['flux'], x3/edge['flux']
+	return A,B,C, x2, x3
 
-def _trapp_passing(E, hdr, bkg):
+def _trapp_passing(E, Z, hdr, bkg):
 	"""
 	see R. White, page 76
 
@@ -235,8 +253,9 @@ def _trapp_passing(E, hdr, bkg):
 	Parameters:
 	"""
 	b_param, bphi, axis, edge = _param_B(hdr,bkg)
+	mom_unit = _momentum_unit(hdr, bkg)
 
-	x = -1*np.linspace(-1,0,num=100)**2
+	x = -1*np.linspace(-edge['flux']*Z*1.602e-19,0,num=100)**2*mom_unit
 	#lower curve
 	y_low = np.linspace(b_param(axis['R'])/np.max(bphi), 1, num=100)
 	#upper curve
@@ -244,7 +263,7 @@ def _trapp_passing(E, hdr, bkg):
 
 	return x, y_up, y_low
 
-def plot_lossregion(E,hdr,bkg):
+def plot_lossregion(E,Z,hdr,bkg):
 	"""plot the loss regions
 
 	Parameters
@@ -253,20 +272,20 @@ def plot_lossregion(E,hdr,bkg):
 
 	"""
 	common_style()
-	A,B,C,x2,x3 = _lost_HFS(E,hdr,bkg)
+	A,B,C,x2,x3 = _lost_HFS(E,Z,hdr,bkg)
 	x_lost_HFS = np.linspace(x2,x3,1000)
 	y_lost_HFS = np.polyval([A,B,C], x_lost_HFS)
 	xmaxhfs=x3
 
-	A,B,C,x2,x3 = _lost_LFS(E,hdr,bkg)
+	A,B,C,x2,x3 = _lost_LFS(E, Z, hdr,bkg)
 	x_lost_LFS = np.linspace(x2,x3,1000)
 	y_lost_LFS = np.polyval([A,B,C], x_lost_LFS)
 
-	A,B,C,x2,x3 = _magaxis(E,hdr,bkg)
+	A,B,C,x2,x3 = _magaxis(E, hdr,bkg)
 	x_magaxis = np.linspace(x2,x3,1000)
 	y_magaxis = np.polyval([A,B,C], x_magaxis)
 	xminmagaxis=x2
-	xtr, y_up, y_low = _trapp_passing(E,hdr,bkg)
+	xtr, y_up, y_low = _trapp_passing(E,Z,hdr,bkg)
 
 	f=plt.figure(figsize=(8,8));
 	ax=f.add_subplot(111)
@@ -282,7 +301,7 @@ def plot_lossregion(E,hdr,bkg):
 	ax.vlines(x=-1, ymin=np.max(y_lost_LFS), ymax=np.max(y_lost_HFS), color='r')
 	if xmaxhfs>xminmagaxis:
 		print('There is overlap...need to plot')
-	ax.set_xlabel(r'$P_\zeta$/$\psi_w$')
+	ax.set_xlabel(r'$P_\zeta$')
 	ax.set_ylabel(r'$\frac{\mu B_0}{E}$')
 	ax.set_title(r'E='+str(E))
 	ax.legend(loc='best'); ax.grid('on')
