@@ -384,12 +384,15 @@ class Bfield_eqdsk:
         self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*math.pi)
         print("remember: I am multiplying psi axis times 2pi since in ascot it divides by it!")
 
-        # poloidal flux of the special points (only one in this case)
-        self.hdr['PFxx'] = [self.axflux[0][0]]
-        self.hdr['RPFx'] = [self.ax[0]]
-        self.hdr['zPFx'] = [self.ax[1]]
-        self.hdr['SSQ']  = [self.eqdsk.Raxis, self.eqdsk.Zaxis, 0, 0]
+        # find 'xpoint' i.e. point on separatrix
+        self.xpoint = [self.eqdsk.R[0], self.eqdsk.Z[0]]        
+        self.xflux = self.psi_coeff(self.eqdsk.R[0], self.eqdsk.Z[0])*(2*math.pi)
 
+        # poloidal flux of the special points (only one in this case. For ascot5 you need 2)
+        self.hdr['PFxx'] = [self.axflux[0][0], self.xflux[0][0]]
+        self.hdr['RPFx'] = [self.ax[0], self.xpoint[0]]
+        self.hdr['zPFx'] = [self.ax[1], self.xpoint[1]]
+        self.hdr['SSQ']  = [self.eqdsk.R0EXP, self.eqdsk.Zaxis, 0, 0]
         
     def build_header_SN(self):
         """ building SN header
@@ -433,8 +436,8 @@ class Bfield_eqdsk:
 
         # poloidal flux of the special points.
         self.hdr['PFxx'] = [self.axflux[0][0], self.xflux[0][0]]
-        self.hdr['RPFx'] = [self.xpoint[0], self.ax[0]]
-        self.hdr['zPFx'] = [self.xpoint[1], self.ax[1]]
+        self.hdr['RPFx'] = [self.ax[0], self.xpoint[0]]
+        self.hdr['zPFx'] = [self.ax[1], self.xpoint[1]]
         self.hdr['SSQ']  = [self.eqdsk.R0EXP, self.eqdsk.Zaxis, 0, 0]
         
     def build_bkg(self):
