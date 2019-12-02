@@ -6,7 +6,7 @@ Classes to handle magnetic fields I/O for ascot&bbnbi
 from __future__ import print_function
 
 import numpy as np
-import h5py, math
+import h5py
 import matplotlib.pyplot as plt
 import a4py.classes.ReadEQDSK as ReadEQDSK
 from scipy.interpolate import griddata
@@ -272,7 +272,7 @@ class Bfield_eqdsk:
         self.Z_eqd = np.linspace(-self.eqdsk.zboxlength/2., self.eqdsk.zboxlength/2., self.eqdsk.nzbox)
         self._cocos_transform(self.COCOS)
         #This is for Equilibrium from CREATE for scenario 2, also to modify in build bkg
-        self.psi_coeff = interp.RectBivariateSpline(self.Z_eqd, self.R_eqd, self.eqdsk.psi)   
+        self.psi_coeff = interp.RectBivariateSpline(self.R_eqd, self.Z_eqd, self.eqdsk.psi)   
         
     def _cocos_transform(self, COCOS):
         """ cocos transformations
@@ -380,16 +380,20 @@ class Bfield_eqdsk:
                   'rhoPF':nrho,'PFL':dummy,'Vol':dummy,'Area':dummy,'Qpl':dummy} 
         
         # find axis
-        self.ax = self._min_grad(x0=[self.eqdsk.Raxis, self.eqdsk.Zaxis])     
-        self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*math.pi)
+        self.ax = self._min_grad(x0=[self.eqdsk.Raxis, self.eqdsk.Zaxis])
+        self.axflux = self.eqdsk.psiaxis*2.*np.pi
+        #self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*np.pi)
+        print('Axis', self.ax, ' Axis flux', self.axflux, self.eqdsk.psiaxis*2*np.pi)        
+        
         print("remember: I am multiplying psi axis times 2pi since in ascot it divides by it!")
 
         # find 'xpoint' i.e. point on separatrix
         self.xpoint = [self.eqdsk.R[0], self.eqdsk.Z[0]]        
-        self.xflux = self.psi_coeff(self.eqdsk.R[0], self.eqdsk.Z[0])*(2*math.pi)
-
+        self.xflux = self.eqdsk.psiedge*(2*np.pi)
+        
+        print('X-point', self.xpoint, ' X-flux', self.xflux)
         # poloidal flux of the special points (only one in this case. For ascot5 you need 2)
-        self.hdr['PFxx'] = [self.axflux[0][0], self.xflux[0][0]]
+        self.hdr['PFxx'] = [self.axflux, self.xflux]
         self.hdr['RPFx'] = [self.ax[0], self.xpoint[0]]
         self.hdr['zPFx'] = [self.ax[1], self.xpoint[1]]
         self.hdr['SSQ']  = [self.eqdsk.R0EXP, self.eqdsk.Zaxis, 0, 0]
@@ -427,11 +431,11 @@ class Bfield_eqdsk:
         x0 = plt.ginput()
         plt.close(f)
         self.xpoint = self._min_grad(x0=x0)        
-        self.xflux = self.psi_coeff(self.xpoint[0], self.xpoint[1])*(2*math.pi)
+        self.xflux = self.psi_coeff(self.xpoint[0], self.xpoint[1])*(2*np.pi)
         
         # find axis
         self.ax = self._min_grad(x0=[self.eqdsk.Raxis, self.eqdsk.Zaxis])     
-        self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*math.pi)
+        self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*np.pi)
         print("remember: I am multiplying psi axis and x-point times 2pi since in ascot it divides by it!")
 
         # poloidal flux of the special points.
@@ -466,7 +470,7 @@ class Bfield_eqdsk:
         #R_temp = np.linspace(float(np.around(np.min(self.R_w), decimals=2)), float(np.around(np.max(self.R_w), decimals=2)), self.nR)
         #z_temp = np.linspace(float(np.around(np.min(self.z_w), decimals=2)), float(np.around(np.max(self.z_w), decimals=2)), self.nz)
 
-        psitemp = self.psi_coeff(z_temp, R_temp)
+        psitemp = self.psi_coeff(R_temp, z_temp)
         #psitemp = self.psi_coeff(R_temp, z_temp)
 
         bphitemp = self.param_bphi(R_temp, z_temp)
@@ -479,7 +483,7 @@ class Bfield_eqdsk:
                   'Bphi':bphitemp, 'BR':self.Br, 'Bz':self.Bz, \
                   'Bphi_pert':self.Bphi_pert, 'BR_pert':self.BR_pert, 'Bz_pert':self.Bz_pert} 
 
-        self.bkg['psi'] = psitemp*2*math.pi #in ASCOT Bfield, the psi is divided by 2*pi and reverses sign. This prevents it from happening  
+        self.bkg['psi'] = psitemp*2*np.pi #in ASCOT Bfield, the psi is divided by 2*pi and reverses sign. This prevents it from happening  
         print("remember: I am multiplying psi times 2pi since in ascot it divides by it!")
     
     def _calc_psi_deriv(self):

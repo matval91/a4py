@@ -827,7 +827,7 @@ def _readwall(device):
     elif device == 'TCV':
         cluster = platform.uname()[1]
         if cluster[-7:] == 'epfl.ch':
-            in_w_fname = '/home/vallar/TCV/input.wall_2d_FW'
+            in_w_fname = '/home/vallar/TCV_wall/input.wall_2d_FW'
         else:
             in_w_fname = '/home/vallar/ASCOT/runs/TCV/57850/input.wall_2d'
 

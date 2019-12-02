@@ -299,7 +299,9 @@ class h5_profiles(profiles):
         try:
             self.read_h5()
         except IOError:
-            "Not h5 file given as input"
+            print("Not h5 file given as input")
+        except OSError:
+            print("Impossible to read file")
 
     def read_h5(self):
         """ Reads h5
