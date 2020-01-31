@@ -129,9 +129,8 @@ def ReadEQDSK(in_filename):
 		return data
 	
 	def read_2d(nr,nz,name="Unknown"):
-		data = np.zeros([nr, nz])
-		for i in np.arange(nr):
-			data[i,:] = read_array(nz, name+"["+str(i)+"]")
+		data = read_array(nr*nz, 'psirz')
+		data = np.reshape(data, (nz,nr))
 		return data
 	
 	#fourth line - nothing or already stored

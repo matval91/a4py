@@ -205,7 +205,7 @@ class Bfield_eqdsk:
         |  calc_field: Function to calculate toroidal fields (fields on poloidal plane set to 0
     """
     
-    def __init__(self, infile, nR, nz, devnam, COCOS, *args):
+    def __init__(self, infile, nR=259, nz=259, devnam=None, COCOS=2, *args):
         self.COCOS = COCOS
         self.devnam = devnam
         self._read_wall()
@@ -267,12 +267,10 @@ class Bfield_eqdsk:
         """    
         self.eqdsk= ReadEQDSK.ReadEQDSK(infile_eqdsk)
         self.infile = infile_eqdsk
-        self.eqdsk.psi = np.reshape(self.eqdsk.psi, (self.eqdsk.nzbox, self.eqdsk.nrbox))       
         self.R_eqd = np.linspace(self.eqdsk.rboxleft, self.eqdsk.rboxleft+self.eqdsk.rboxlength, self.eqdsk.nrbox)
         self.Z_eqd = np.linspace(-self.eqdsk.zboxlength/2., self.eqdsk.zboxlength/2., self.eqdsk.nzbox)
         self._cocos_transform(self.COCOS)
-        #This is for Equilibrium from CREATE for scenario 2, also to modify in build bkg
-        self.psi_coeff = interp.RectBivariateSpline(self.R_eqd, self.Z_eqd, self.eqdsk.psi)   
+        self.psi_coeff = interp.interp2d(self.R_eqd, self.Z_eqd, self.eqdsk.psi)
         
     def _cocos_transform(self, COCOS):
         """ cocos transformations
@@ -393,9 +391,9 @@ class Bfield_eqdsk:
         
         print('X-point', self.xpoint, ' X-flux', self.xflux)
         # poloidal flux of the special points (only one in this case. For ascot5 you need 2)
-        self.hdr['PFxx'] = [self.axflux, self.xflux]
-        self.hdr['RPFx'] = [self.ax[0], self.xpoint[0]]
-        self.hdr['zPFx'] = [self.ax[1], self.xpoint[1]]
+        self.hdr['PFxx'] = [self.xflux, self.axflux]
+        self.hdr['RPFx'] = [self.xpoint[0], self.ax[0]]
+        self.hdr['zPFx'] = [self.xpoint[1], self.ax[1]]
         self.hdr['SSQ']  = [self.eqdsk.R0EXP, self.eqdsk.Zaxis, 0, 0]
         
     def build_header_SN(self):
@@ -556,7 +554,6 @@ class Bfield_eqdsk:
             None
 
         """
-
         print("Calculating Bphi")
         inv_R = np.asarray(1.0)/np.array(self.R_eqd)
         inv_R = np.tile(inv_R,[self.eqdsk.nzbox, 1])

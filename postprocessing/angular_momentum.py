@@ -15,40 +15,56 @@ from scipy.interpolate import interp1d
 from utils.plot_utils import common_style
 import a4py.postprocessing.read_magnbkg as read_magnbkg 
 import a4py.preprocessing.filter_marker as a4fm 
+import a4py.classes.Bfield as a4b
 
-def main(fname_particles='../examples/input.particles_pt_1e4',
-	fname_bkg='../examples/input.magn_bkg', fname_hdr='../examples/input.magn_header', E=85e3):
-	"""
-	"""
-	global b_param, bphi, axis, edge, mom_unit
-	print('Read markers')
-	mm,_,_,_=a4fm.filter_marker(fname_particles, fname_out='')
-	#ind = mm[:,9]<-1.5e6 #filter on rho
-	v=np.sqrt(mm[:,9]**2+mm[:,10]**2+mm[:,11]**2)
-	pitch=mm[:,9]/v
-	ind=np.abs(pitch)<0.2
-	#mm = mm[ind,:]
+def main(fname_particles='../examples/input.particles_pt_1e4', 
+         fname_bkg='../examples/input.magn_bkg', fname_hdr='../examples/input.magn_header', 
+         fname_eqdsk = '../examples/EQDSK_58934t0.8000_COCOS03_COCOS03', COCOS=3, E=85e3):
+    """
+    """
+    global b_param, bphi, axis, edge, mom_unit
+    
+    
+    try:
+        print('Read markers')
+        mm,_,_,_=a4fm.filter_marker(fname_particles, fname_out='')
+        #ind = mm[:,9]<-1.5e6 #filter on rho
+        v=np.sqrt(mm[:,9]**2+mm[:,10]**2+mm[:,11]**2)
+        pitch=mm[:,9]/v
+        ind=np.abs(pitch)<0.2
+        #mm = mm[ind,:]
+    except:
+        print('No markers detected')
+        mm = None
 
-	print('Read B field')
-	hdr=read_magnbkg.read_header(fname_hdr) 
-	bkg=read_magnbkg.read_bkg(fname_bkg)
-	b_param, bphi, axis, edge = _param_B(hdr,bkg)
+    print('Read B field')
+    if fname_hdr!='' and fname_bkg!='':
+        print('Reading from hdr, bkg')
+        hdr=read_magnbkg.read_header(fname_hdr) 
+        bkg=read_magnbkg.read_bkg(fname_bkg)
+    else:
+        print('Reading from EQDSK')
+        bfield_eq=a4b.Bfield_eqdsk(fname_eqdsk, 259, 259, '', COCOS=COCOS)
+        bfield_eq.build_lim()
+        hdr=bfield_eq.hdr; bkg=bfield_eq.bkg
+    b_param, bphi, axis, edge = _param_B(hdr,bkg)
 
-	print('Calculate angular moment and mu')
-	mom_unit = _momentum_unit()
-	pdict=convert_arrpart_to_dict(mm) 
-	angmom=calculate_angmom(pdict) 
-	mue=calculate_muE(pdict) 
-
-	#b_param, bphi, axis, edge = _param_B(hdr,bkg)
-	if E>1000:
-		E*=1.602e-19
-	plot_lossregion(E, 1)
-	#f=plt.figure()
-	ax=plt.gca(); ax.scatter(angmom, mue)
-	plt.show()
-
-
+    print('Calculate angular moment and mu')
+    if mm is not None:
+        pdict=convert_arrpart_to_dict(mm) 
+        angmom=calculate_angmom(pdict) 
+        mue=calculate_muE(pdict) 
+    else:
+        angmom=[0]; mue=[0]
+    #b_param, bphi, axis, edge = _param_B(hdr,bkg)
+    if E>1000:
+        1.602e-19
+    mom_unit, energy_unit = _momentum_unit()
+    print(energy_unit)
+    #plot_lossregion_mp(E, 1)
+    #f=plt.figure()
+    #ax=plt.gca(); ax.scatter(angmom, mue)
+    #plt.show()
 
 def _find_parabola(x1, y1, x2, y2, x3, y3):
 	'''
@@ -62,12 +78,25 @@ def _find_parabola(x1, y1, x2, y2, x3, y3):
 	return A,B,C
 
 def _momentum_unit():
-	"""
-	"""
-	#b_param, bphi, axis, edge = _param_B(hdr,bkg)
-	mom_unit=(1.602e-19*b_param(axis['R'])/1.66e-27)*(1.66e-27)*(axis['R'])**2
-	mom_unit=1./mom_unit
-	return mom_unit
+    """
+    Calculation of fkng units!
+    E_unit = m*omega_0**2*R**2 = (m*v**2/2)*(2*R**2/rho**2)
+    rho = mv/qB
+    """
+    mom_unit=(1.602e-19*b_param(axis['R'])/1.66e-27)*(1.66e-27)*(axis['R'])**2
+    mom_unit=1./mom_unit
+    mp=1.66e-27;
+    e=1.602e-19
+    m = 2*mp;
+    B = b_param(axis['R'])*10
+    q = 1*e
+    omega_0 = q*B/m
+    R = axis['R']
+    
+    print(m,B,q, omega_0, R)
+    
+    energy_unit = m*omega_0**2*R**2
+    return mom_unit, energy_unit
 
 def convert_arrpart_to_dict(particles):
 	"""	
@@ -137,8 +166,6 @@ def calculate_angmom(partdict):
 	canangmom *= mom_unit
 	return canangmom
 
-
-
 def calculate_muE(partdict):
 	"""calc mu
 	Calculates the magnetic moment of the particles
@@ -162,27 +189,32 @@ def calculate_muE(partdict):
 	return mu
 
 def _param_B(hdr, bkg):
-	"""dict with B
-	Create dictionary with B values
+    """dict with B
+    Create dictionary with B values
 
-	Arguments:
-		hdr
-		bkg
-	Parameters:
-	"""
-	bphi = np.abs(bkg['Bphi'][0,:]) #B must be decreasing with R, as defined in White book
-	ind=np.where(bphi!=0)[0]
-	bphi = bphi[ind]
-	b_param = interp1d(bkg['R'][ind], bphi)	
-	# poloidal flux must be from 0 to psi_edge, having maximum at psi_edge
-	# since the hdr and bkg should be in COCOS5, psi should be increasing and thus I set to 0 the axis
-	# remember the *2pi, done in building because of the ASCOT implementation
-	#axis={'R':hdr['RPFx'][0], 'z':hdr['zPFx'][0], 'flux':hdr['PFxx'][0]-hdr['PFxx'][0]}
-	#edge={'R':hdr['RPFx'][1], 'z':hdr['zPFx'][1], 'flux':(hdr['PFxx'][1]-hdr['PFxx'][0])/(2*np.pi)}
-	edge={'R':hdr['RPFx'][0], 'z':hdr['zPFx'][0], 'flux':hdr['PFxx'][0]+hdr['PFxx'][1]}
-	axis={'R':hdr['RPFx'][1], 'z':hdr['zPFx'][1], 'flux':0}
-	
-	return b_param, bphi, axis, edge
+    Arguments:
+        hdr
+        bkg
+        Parameters:
+        """
+    bphi = np.abs(bkg['Bphi'][0,:]) #B must be decreasing with R, as defined in White book
+    ind=np.where(bphi!=0)[0]
+    bphi = bphi[ind]
+    b_param = interp1d(bkg['R'][ind], bphi)	
+    # poloidal flux must be from 0 to psi_edge, having maximum at psi_edge
+    # since the hdr and bkg should be in COCOS5, psi should be increasing and thus I set to 0 the axis
+    # remember the *2pi, done in building because of the ASCOT implementation
+    #axis={'R':hdr['RPFx'][0], 'z':hdr['zPFx'][0], 'flux':hdr['PFxx'][0]-hdr['PFxx'][0]}
+    #edge={'R':hdr['RPFx'][1], 'z':hdr['zPFx'][1], 'flux':(hdr['PFxx'][1]-hdr['PFxx'][0])/(2*np.pi)}
+    edge={'R':hdr['RPFx'][0], 'z':hdr['zPFx'][0], 'flux':hdr['PFxx'][0]+hdr['PFxx'][1]}
+    axis={'R':hdr['RPFx'][1], 'z':hdr['zPFx'][1], 'flux':0}
+    print(edge, axis)
+    if edge['flux']<axis['flux']:
+        edge['flux'] -= axis['flux']
+        axis['flux'] -= axis['flux']
+        if edge['flux']<axis['flux']:
+            edge['flux'] = -edge['flux']
+    return b_param, bphi, axis, edge
 
 def _lost_LFS(E, Z):
 	"""
@@ -200,7 +232,6 @@ def _lost_LFS(E, Z):
 	"""
 	#b_param, bphi, axis, edge = _param_B(hdr,bkg)
 	#mom_unit = _momentum_unit(hdr, bkg)
-        
 	x1 = -edge['flux']*Z*1.602e-19*mom_unit
 	y1 = E/np.min(bphi)/(E/b_param(axis['R']))
 	# vacuum approximation
@@ -337,16 +368,58 @@ def plot_lossregion(E,Z):
 	plt.fill_between(xtr[xtr>-1.], y_low[xtr>-1.], color='w')
 	plt.fill_between(x_lost_HFS,y_lost_HFS, color='white')
 	ax.vlines(x=x_vl, ymin=np.max(y_lost_LFS), ymax=np.max(y_lost_HFS), color='r')
-	if xmaxhfs>xminmagaxis:
-		print('There is overlap...need to plot')
-	ax.set_xlabel(r'$P_\zeta/\psi_W$')
-	ax.set_ylabel(r'$\frac{\mu B_0}{E}$')
-	ax.set_title(r'E='+str(E/1.602e-19*1e-3)+' keV')
-	xticks=ax.get_xticks()
-	#_,_,_, edge = _param_B(hdr,bkg); 	#mom_unit = _momentum_unit(hdr, bkg)
-	xticks/=-edge['flux']*Z*1.602e-19*mom_unit
-	xticks=np.array([-2., -1.5, -1., -0.5, 0., 0.5])
-	ax.set_xticks(xticks*edge['flux']*Z*1.602e-19*mom_unit) 
-	ax.set_xticklabels(xticks.round(2))
-	ax.legend(loc='best'); ax.grid('on')
-	f.tight_layout()
+# 	if xmaxhfs>xminmagaxis:
+# 		print('There is overlap...need to plot')
+# 	ax.set_xlabel(r'$P_\zeta/\psi_W$')
+# 	ax.set_ylabel(r'$\frac{\mu B_0}{E}$')
+# 	ax.set_title(r'E='+str(E/1.602e-19*1e-3)+' keV')
+# 	xticks=ax.get_xticks()
+# 	#_,_,_, edge = _param_B(hdr,bkg); 	#mom_unit = _momentum_unit(hdr, bkg)
+# 	xticks/=-edge['flux']*Z*1.602e-19*mom_unit
+# 	xticks=np.array([-2., -1.5, -1., -0.5, 0., 0.5])
+# 	ax.set_xticks(xticks*edge['flux']*Z*1.602e-19*mom_unit) 
+# 	ax.set_xticklabels(xticks.round(2)); ax.set_xlim([-1.5*edge['flux']*Z*1.602e-19*mom_unit, 1.*edge['flux']*Z*1.602e-19*mom_unit])
+# 	ax.legend(loc='best'); ax.grid('on')
+# 	f.tight_layout()
+
+
+
+def plot_lossregion_mp(E,Z):
+    """plot the loss regions
+
+    Parameters
+
+    Returns
+
+    """
+    common_style()
+    
+    x = np.linspace(-2, 1., 100)
+    y_lost_HFS = 1/np.min(bphi)-edge['flux']**2*(1+x)**2*np.min(bphi)/(2*bphi*)
+
+
+    f=plt.figure(figsize=(8,8));
+    ax=f.add_subplot(111)
+    ax.plot(x_lost_HFS, y_lost_HFS, label='lost HFS')
+    ax.plot(x_lost_LFS, y_lost_LFS, label='lost LFS')
+    plt.fill_between(x_lost_LFS[x_lost_LFS<-1.],y_lost_LFS[x_lost_LFS<-1.], color='grey', alpha=1)
+    ax.plot(x_magaxis, y_magaxis, label='Mag. Axis')
+    ax.plot(xtr, y_up, 'r', label='trapped')
+    ax.plot(xtr, y_low, 'r')
+    plt.fill_between(x_lost_LFS[x_lost_LFS>-1.],y_lost_LFS[x_lost_LFS>-1.], color='grey', alpha=1)
+    plt.fill_between(xtr[xtr>-1.], y_low[xtr>-1.], color='w')
+    plt.fill_between(x_lost_HFS,y_lost_HFS, color='white')
+    ax.vlines(x=x_vl, ymin=np.max(y_lost_LFS), ymax=np.max(y_lost_HFS), color='r')
+# 	if xmaxhfs>xminmagaxis:
+# 		print('There is overlap...need to plot')
+# 	ax.set_xlabel(r'$P_\zeta/\psi_W$')
+# 	ax.set_ylabel(r'$\frac{\mu B_0}{E}$')
+# 	ax.set_title(r'E='+str(E/1.602e-19*1e-3)+' keV')
+# 	xticks=ax.get_xticks()
+# 	#_,_,_, edge = _param_B(hdr,bkg); 	#mom_unit = _momentum_unit(hdr, bkg)
+# 	xticks/=-edge['flux']*Z*1.602e-19*mom_unit
+# 	xticks=np.array([-2., -1.5, -1., -0.5, 0., 0.5])
+# 	ax.set_xticks(xticks*edge['flux']*Z*1.602e-19*mom_unit) 
+# 	ax.set_xticklabels(xticks.round(2)); ax.set_xlim([-1.5*edge['flux']*Z*1.602e-19*mom_unit, 1.*edge['flux']*Z*1.602e-19*mom_unit])
+# 	ax.legend(loc='best'); ax.grid('on')
+# 	f.tight_layout()
