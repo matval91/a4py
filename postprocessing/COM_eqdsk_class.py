@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sat Jan 25 15:54:54 2020
+Script to compute the angular momentum and mangetic moment of the particles
 
-@author: matval
+Angular momentum
+P_ki = m x R x V_ki - Z x e x psi
+ki=toroidal direction
+psi=poloidal flux
+
+Magnetic moment
+mu = E_perp/B = m x V_perp**2 / (2 x B)
 """
-import ReadEQDSK as re
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt 
+import a4py.preprocessing.filter_marker as a4fm 
+import a4py.classes.ReadEQDSK as re
 import scipy.interpolate as interp
-import sys
-plt.rc('xtick', labelsize=20)
-plt.rc('ytick', labelsize=20)
-plt.rc('axes', labelsize=24, titlesize=24)
-plt.rc('figure', facecolor='white')
-plt.rc('legend', fontsize=15)
-plt.rc('lines', linewidth= 2.3)
+from utils.plot_utils import common_style
 
-def run(fname_eqdsk, Ekev, debug=1, plot=1):
+common_style()
+def COM_eqdsk(fname_eqdsk, Ekev, debug=0, plot=1):
     """ COM boundaries
     Plot COM boundary spaces given eqdsk and Ekev
     """
@@ -118,7 +120,6 @@ def run(fname_eqdsk, Ekev, debug=1, plot=1):
     psi_z0 = psi_z0[psi_z0<1.]
     trpp_up['x'] = -1.*psi_z0;
     
-    #trpp_up['x']=np.flipud(trpp_up['x'])
     # step 2 : find B at the R>R0, with normalizations
     B_theta0 = B_paramR(np.linspace(R0, max(R_notnorm), np.size(psi_z0))); B_theta0/=B0;
     trpp_up['y'] = (1./B_theta0);
@@ -131,7 +132,6 @@ def run(fname_eqdsk, Ekev, debug=1, plot=1):
     psi_zpi = np.abs(psi_zpi/R0*R0*B0)
     psi_zpi = psi_zpi[psi_zpi<1.]
     trpp_down['x'] = -1.*psi_zpi;
-    #trpp_down['x']=np.flipud(trpp_down['x'])
     # step 2 : find B at the R>R0, with normalizations
     B_thetapi = B_paramR(np.linspace(min(R_notnorm), R0, np.size(psi_zpi))); B_thetapi/=B0;
     trpp_down['y'] = (1/B_thetapi);
@@ -155,12 +155,156 @@ def run(fname_eqdsk, Ekev, debug=1, plot=1):
     plt.show()
     
     return eq
+
+def COM_markers(fname_particles, eq, Ekev):
+    """
+    """
+    try:
+        print('Read markers')
+        mm,_,_,_=a4fm.filter_marker(fname_particles, fname_out='')
+        #ind = mm[:,9]<-1.5e6 #filter on rho
+        #v=np.sqrt(mm[:,9]**2+mm[:,10]**2+mm[:,11]**2)
+        #pitch=mm[:,9]/v
+#        ind=np.abs(pitch)<0.2
+#        mm = mm[ind,:]
+    except:
+        print('No markers detected')
+        mm = None
+        
+    if mm is not None:
+        pdict=convert_arrpart_to_dict(mm)
+        angmom=calculate_angmom(pdict, eq)
+        mu=calculate_mu(pdict)
+    else:
+        angmom=[0]; mu=[0]
+
+    mom_unit, energy_unit, mu_unit = _momentum_unit(eq)
+    B0=np.abs(eq.B0EXP)
+    psi_edge = np.max(np.abs([eq.psiaxis, eq.psiedge]))
+    x=angmom/mom_unit
+    #x/=psi_edge
+    y=mu*B0/(Ekev*1e3*1.602e-19)
+    return mm, pdict, angmom, mu, x,y
+
+def COM_eqdsk_markers(fname_particles='../examples/input.particles_pt_1e4', 
+         fname_eqdsk = '../examples/EQDSK_58934t0.8000_COCOS03_COCOS03', Ekev=85):
+    """
+    """
+    eq=COM_eqdsk(fname_eqdsk, Ekev, 0,1)
+    ax=plt.gca();
+
+    mm, pdict, angmom, mu, x,y = COM_markers(fname_particles, eq, Ekev)
+    ind_pitchpos = np.where(pdict['pitch']>0.)[0]
+    ind_pitchneg = np.where(pdict['pitch']<0.)[0]
+    ax.scatter(x[ind_pitchpos], y[ind_pitchpos], marker='o', label=r'$\xi>0.$', color='k')
+    ax.scatter(x[ind_pitchneg], y[ind_pitchneg], marker='x', label=r'$\xi<0.$', color='k')
+    ax.legend(loc='best')
+    return mm, angmom, mu, x,y, eq
+
+def _momentum_unit(eq):
+    """
+    Calculation of fkng units!
+    E_unit = m*omega_0**2*R**2 = (m*v**2/2)*(2*R**2/rho**2)
+    rho = mv/qB
+    """
+    mp=1.66e-27; A=2;
+    q=1.602e-19; Z=1
+    B = np.abs(eq.B0EXP)
+    R = eq.R0EXP
+
+    mom_unit= Z*q*B*R**2 #pphi=pphi[SI]*pphi_unit
+    energy_unit = mp*A/(Z*Z*q*q*R**2*B**2) #E=E[J]*energy_unit
+    mu_unit = mp*A/(Z*Z*q*q*R**2*B) #mu=mu[SI]*mu_unit
+    return mom_unit, energy_unit, mu_unit
+
+def convert_arrpart_to_dict(particles):
+    """	
+    Converts the array of particles to a dict
+
+    partdict = convert_arrpart_to_dict(particles)
+
+    Arguments:
+        particles (arr) : particles object read from input.particles
+    Parameters:
+        partdict (dict): dict with the variables
+    """
+    partdict = {}
+    partdict['m'] = particles[:,0]
+    partdict['Z'] = particles[:,2]
+    partdict['rho'] = particles[:,5]
+    partdict['R'] = particles[:,7]
+    partdict['vphi'] = particles[:,9]
+    partdict['vR'] = particles[:,10]
+    partdict['vz'] = particles[:,11]
+    normV = np.sqrt(partdict['vphi']*partdict['vphi']+\
+                    partdict['vR']*partdict['vR']+\
+                    partdict['vz']*partdict['vz'])
+    partdict['Bphi'] = particles[:,16]
+    partdict['BR'] = particles[:,17]
+    partdict['Bz'] = particles[:,18]
+    normB = np.sqrt(partdict['Bphi']*partdict['Bphi']+\
+                partdict['BR']*partdict['BR']+\
+                partdict['Bz']*partdict['Bz'])
+    partdict['pitch'] = (partdict['Bphi']*partdict['vphi']+partdict['Bz']*partdict['vz']\
+            +partdict['BR']*partdict['vR'])/(normB*normV)
     
-# if len(sys.argv) == 3:
-#     fname_eqdsk=sys.argv[1]
-#     E=float(sys.argv[2])
-# else:
-#     fname_eqdsk='EQDSK_58934t0.8000_COCOS03_COCOS03'
-#     E=25
-# print('Read input', fname_eqdsk, str(E))
-# main(fname_eqdsk, E)
+    return partdict
+
+def calculate_angmom(partdict, eq):
+    """calc pphi
+    Script to calculate canonical angular momentum, defined as
+    P_ki = m x R x V_ki - Z x e x psi
+    ki=toroidal direction
+    psi=poloidal flux
+    
+    pphi = calculate_angmom(particles)
+    
+    The canonical angular momentum dimensionally is [kg*m2*s-1]=[E][dt]
+    The poloidal flux dimensionally is [Vs]
+    pol.flux x charge x R = [V dt][q][dx] = [F][dt][dx] = [E][dt]
+
+    Arguments
+        partdict (dict): dict with the variables
+        hdr (dict) : magnetic field with psiaxis and psiedge (poloidal fluxes) 
+    Parameters
+
+
+    """
+    rho = partdict['rho']
+    polflux_norm = rho**2
+
+    psia = eq.psiaxis; psiw=eq.psiedge
+    if psiw<psia or psiw==0:
+        psiw-=psia; psia-=psia; # now stuff set from 0 to something.
+        if psiw<0: 
+            psiw=psiw*-1.;
+
+    polflux = polflux_norm*(psiw-psia)+psia
+
+    m = partdict['m']
+    R = partdict['R']
+    vphi = np.copy(partdict['vphi'])
+    Z = partdict['Z']
+    #vphi *= m*1.6e-27/(Z*1.602e-19*b_param(R)*R)
+    canangmom = m*1.66e-27*R*vphi-Z*1.602e-19*polflux
+    canangmom = np.array(canangmom)
+    return canangmom
+
+def calculate_mu(partdict):
+    """calc mu
+    Calculates the magnetic moment of the particles
+
+    mu = E_perp/B = m x V_perp**2 / (2 x B)
+
+    mu=calculate_mu(partdict)
+
+    Arguments:
+        partdict (dict): dict with the variables
+    Parameters:
+        mu
+    """
+    m = 1.67262e-27 * partdict['m']
+    v_perp = np.sqrt(partdict['vR']**2+partdict['vz']**2)
+    B = np.sqrt(partdict['Bphi']**2+partdict['BR']**2+partdict['Bz']**2)
+    mu = m*v_perp**2/(2.*B)
+    return mu
