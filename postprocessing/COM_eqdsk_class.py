@@ -19,7 +19,7 @@ import scipy.interpolate as interp
 from utils.plot_utils import common_style
 
 common_style()
-def COM_eqdsk(fname_eqdsk, Ekev, debug=0, plot=1):
+def COM_eqdsk(fname_eqdsk, Ekev, debug=1, plot=1):
     """ COM boundaries
     Plot COM boundary spaces given eqdsk and Ekev
     """
@@ -51,7 +51,7 @@ def COM_eqdsk(fname_eqdsk, Ekev, debug=0, plot=1):
     #Forcing B to be positive and decreasing in R
     B = np.abs(B)
     Bmin = np.min(B); Bmax=np.max(B)
-    
+
     Rmin = min(R); Rmax=max(R)
     B_paramR = interp.interp1d(R, B)
     B0 = B_paramR(R0)
@@ -67,7 +67,8 @@ def COM_eqdsk(fname_eqdsk, Ekev, debug=0, plot=1):
             psiw=psiw*-1.; psi*=-1;
     ####################################################################
     #print values for debugging
-    if debug=='a':
+    if debug:
+        print('Rmin={:.2f}; Rmax={:.2f}; R={:.2f}'.format(Rmin, Rmax, R0))
         print('Bmin={:.2f}; Bmax={:.2f}; B={:.2f}'.format(Bmin, Bmax, B0))
         print('gax={:.2f}; gedge={:.2f}; B0R0={:.2f}'.format(g0, gedge, R0*B0))
         print('psiw={:.2f}; psiax={:.2f}'.format(psiw, psia))

@@ -11,7 +11,7 @@ def read_bkg(fname='input.magn_bkg'):
     bkg = {}
     line = d[0].split()
     bkg['phi0'] = float(line[0])
-    bkg['nsector'] = int(line[1])
+    bkg['nsector'] = float(line[1])
     bkg['nphi_per_sector'] = int(line[2])
     bkg['ncoil'] = int(line[3])
     bkg['zero_at_coil'] = int(line[4])
@@ -35,7 +35,7 @@ def read_bkg(fname='input.magn_bkg'):
                 arr = np.append(arr, float(el))
         bkg[rr] = np.reshape(arr, (nR, nz))
         ind_psi += i
-
+    bkg['psi'] /= 2*np.pi
     return bkg
 
 def read_header(fname='input.magn_header'):
@@ -62,15 +62,17 @@ def read_header(fname='input.magn_header'):
     hdr['zPFx'] = np.zeros(nPF)
     line = d[4].split()
     for j in range(nPF):
-        hdr['PFxx'][j] = line[j]
-
+        hdr['PFxx'][j] = float(line[j])
+        
+    hdr['PFxx'][:] /= 2*np.pi
+    
     line = d[5].split()
     for j in range(nPF):
-        hdr['RPFx'][j] = line[j]
+        hdr['RPFx'][j] = float(line[j])
 
     line = d[6].split()
     for j in range(nPF):
-        hdr['zPFx'][j] = line[j]
+        hdr['zPFx'][j] = float(line[j])
         
     hdr['SSQ'] = np.array([])
     line = d[7].split(); i=0;

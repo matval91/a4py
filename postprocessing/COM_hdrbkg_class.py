@@ -21,53 +21,50 @@ from utils.plot_utils import common_style
 common_style()
 def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
     """ COM boundaries
-    Plot COM boundary spaces given eqdsk and Ekev
+    Plot COM boundary spaces given bkg, hdr and Ekev
     """
     hdr = rm.read_header(fname_hdr)
-    bkg = rm.read_bkg(fname_hdr)
+    bkg = rm.read_bkg(fname_bkg)
     E=Ekev*1000*1.602e-19
     
     # Getting psi_2d (Normalized to edge and axis value) and interpolate it
-    psiw = hdr['PFxx'][-1]; psia=hdr['PFxx'][0];
+    psiw = hdr['PFxx'][0]; psia=hdr['PFxx'][-1];
     _R = bkg['R']
     _z = bkg['z']
     psi2d_param = interp.interp2d(_R, _z, (bkg['psi']-psia)/(psiw-psia))
     #psi2d_param_notnorm = interp.interp2d(_R, _z, eq.psi)
     # Finding the axis R0 of the device, which is the one to use to normalize
     R0 = _R[np.argmin(psi2d_param(_R,0))]
-    if debug:
-        print('R0={:.2f} vs old R0={:.2f} \n'.format(R0, eq.R0EXP))
+    psi_on_midplane = psi2d_param(_R,0)
+    R = _R[psi_on_midplane<1.] #R on midplane inside lcfs
     #T is as function of psi (equidistant)
-    psi = np.linspace(0,1,eq.nrbox)
-    T_param = interp.interp1d(psi, eq.T)
-    #Find psi at the R of the Rbox on midplane, Z=0
-    psi_at_midplane = psi2d_param(_R, 0)
-    #Limiting only inside the plasma
-    R=_R[psi_at_midplane<1.]
-    psi_at_midplane=psi_at_midplane[psi_at_midplane<1.]
-    #Finding values of T and then B at the midplane, inside the plasma
-    T_on_midplane = T_param(psi_at_midplane)
-    B = T_on_midplane/R;
+    B = bkg['Bphi']
     #Forcing B to be positive and decreasing in R
     B = np.abs(B)
-    Bmin = np.min(B); Bmax=np.max(B)
+    B_param = interp.interp2d(_R, _z, B)
+    Bmin = np.min(B_param(R,0)); Bmax=np.max(B_param(R,0))
+
+    T_on_midplane = B_param(R,0)*R
+    T_param = interp.interp1d(R, T_on_midplane)
     
+    psi_on_midplane = psi2d_param(_R,0)
+    R = _R[psi_on_midplane<1.] #R on midplane inside lcfs
     Rmin = min(R); Rmax=max(R)
-    B_paramR = interp.interp1d(R, B)
-    B0 = B_paramR(R0)
+    B0 = B_param(R0, 0)[0]
     #finding also extrema of g
     g_param=T_param
-    gedge = np.abs(g_param(1.))
-    g0 = np.abs(g_param(0.))
+    gedge = np.abs(g_param(Rmax))
+    g0 = np.abs(g_param(R0))    
     # We want psi increasing from 0 to psi_wall
-    psi=eq.psi_grid
+    psi=np.linspace(0,1, np.size(_R))
     if psiw<psia or psiw==0:
         psiw-=psia; psi-=psia; psia-=psia; # now stuff set from 0 to something.
         if psiw<0: 
             psiw=psiw*-1.; psi*=-1;
     ####################################################################
     #print values for debugging
-    if debug=='a':
+    if debug:
+        print('Rmin={:.2f}; Rmax={:.2f}; R={:.2f}'.format(Rmin, Rmax, R0))
         print('Bmin={:.2f}; Bmax={:.2f}; B={:.2f}'.format(Bmin, Bmax, B0))
         print('gax={:.2f}; gedge={:.2f}; B0R0={:.2f}'.format(g0, gedge, R0*B0))
         print('psiw={:.2f}; psiax={:.2f}'.format(psiw, psia))
@@ -109,7 +106,6 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
     # copss_lost*B0=1/(Bmin)-(Bmin/2.)*(psi**2*(1+x)**2)/(2*(R0*B0*gedge)**2*E)
     cntrpss_lost = 1/Bmax-(Bmax)*(psiw**2*(1+x)**2)/(2*gedge**2*E)
     magaxis = 1-(x*psiw)**2/(2*E*g0**2)
-    
     #Normalization
     #Trapped/passing boundary - UPPER
     trpp_up={}
@@ -121,7 +117,7 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
     trpp_up['x'] = -1.*psi_z0;
     
     # step 2 : find B at the R>R0, with normalizations
-    B_theta0 = B_paramR(np.linspace(R0, max(R_notnorm), np.size(psi_z0))); B_theta0/=B0;
+    B_theta0 = B_param(np.linspace(R0, max(R_notnorm), np.size(psi_z0)), 0); B_theta0/=B0;
     trpp_up['y'] = (1./B_theta0);
     
     #Trapped/passing boundary - LOWER
@@ -133,7 +129,7 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
     psi_zpi = psi_zpi[psi_zpi<1.]
     trpp_down['x'] = -1.*psi_zpi;
     # step 2 : find B at the R>R0, with normalizations
-    B_thetapi = B_paramR(np.linspace(min(R_notnorm), R0, np.size(psi_zpi))); B_thetapi/=B0;
+    B_thetapi = B_param(np.linspace(min(R_notnorm), R0, np.size(psi_zpi)), 0); B_thetapi/=B0;
     trpp_down['y'] = (1/B_thetapi);
 
     if plot:
@@ -154,7 +150,7 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
         #f.savefig('COM_{:s}_E{:.2f}.png'.format(fname_eqdsk, Ekev), dpi=800)
     plt.show()
     
-    return eq
+    return hdr, bkg, R0, B0
 
 def COM_markers(fname_particles, eq, Ekev):
     """
@@ -180,18 +176,22 @@ def COM_markers(fname_particles, eq, Ekev):
 
     mom_unit, energy_unit, mu_unit = _momentum_unit(eq)
     B0=np.abs(eq.B0EXP)
-    psi_edge = np.max(np.abs([eq.psiaxis, eq.psiedge]))
+    #psi_edge = np.max(np.abs([eq.psiaxis, eq.psiedge]))
     x=angmom/mom_unit
     #x/=psi_edge
     y=mu*B0/(Ekev*1e3*1.602e-19)
     return mm, pdict, angmom, mu, x,y
 
-def COM_eqdsk_markers(fname_particles='../examples/input.particles_pt_1e4', 
-         fname_eqdsk = '../examples/EQDSK_58934t0.8000_COCOS03_COCOS03', Ekev=85):
+def COM_hdrbkg_markers(fname_particles='../examples/input.particles_pt_1e4',\
+                        fname_hdr ='../examples/input.magn_header',\
+                        fname_bkg ='../examples/input.magn_bkg', Ekev=85):
     """
     """
-    eq=COM_eqdsk(fname_eqdsk, Ekev, 0,1)
+    hdr, bkg, R0, B0 = COM_hdrbkg(fname_hdr, fname_bkg, Ekev, 0,1)
     ax=plt.gca();
+    eq = type('', (), {})()
+    eq.R0EXP = R0; eq.B0EXP = B0;
+    eq.psiedge = hdr['PFxx'][0]; eq.psiaxis=hdr['PFxx'][-1];
 
     mm, pdict, angmom, mu, x,y = COM_markers(fname_particles, eq, Ekev)
     ind_pitchpos = np.where(pdict['pitch']>0.)[0]
