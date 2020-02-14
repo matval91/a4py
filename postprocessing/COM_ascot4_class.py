@@ -47,12 +47,14 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
     T_on_midplane = B_param(R,0)*R
     T_param = interp.interp1d(R, T_on_midplane)
     
+    psi_on_midplane = psi2d_param(_R,0)
+    R = _R[psi_on_midplane<1.] #R on midplane inside lcfs
     Rmin = min(R); Rmax=max(R)
     B0 = B_param(R0, 0)[0]
     #finding also extrema of g
     g_param=T_param
     gedge = np.abs(g_param(Rmax))
-    g0 = np.abs(g_param(R0))
+    g0 = np.abs(g_param(R0))    
     # We want psi increasing from 0 to psi_wall
     psi=np.linspace(0,1, np.size(_R))
     if psiw<psia or psiw==0:
