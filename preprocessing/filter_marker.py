@@ -1,7 +1,7 @@
 
 from __future__ import print_function
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 def filter_marker(input_fname='input.particles', \
                   fname_out='input.particles_filt',\
                   minrho=0.8, minxi=-1., maxxi=1., sign=1, max_markers=30000, maxrho=5.):
@@ -48,6 +48,8 @@ def filter_marker(input_fname='input.particles', \
                 indvz = ind-ind_countrho-1
             elif 'radial' in tmpl:
                 indvr = ind-ind_countrho-1
+        elif 'weight' in tmpl:
+            indweight = ind-ind_countrho-1
         elif 'magnetic' in tmpl:
             if 'toroidal' in tmpl:
                 indBphi = ind-ind_countrho-1
@@ -82,6 +84,7 @@ def filter_marker(input_fname='input.particles', \
     _markers_towrite = markers[indnew,:]
     if np.shape(indnew)[0]<max_markers: max_markers=np.size(indnew)
     max_markers=int(max_markers)
+    _markers_towrite[:, indweight] *= np.size(markers,0)/max_markers
     markers_towrite = _markers_towrite[0:max_markers,:]
     n_newmarkers = max_markers
 
