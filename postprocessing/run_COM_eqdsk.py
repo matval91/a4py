@@ -16,4 +16,4 @@ else:
     E=25
 print('Read input', fname_eqdsk, str(E))
 
-eq=ce.COM_eqdsk(fname_eqdsk, E)
+eq=ce.COM_eqdsk(fname_eqdsk, E, debug=True, plot=False)

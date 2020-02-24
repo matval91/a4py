@@ -12,9 +12,9 @@ Magnetic moment
 mu = E_perp/B = m x V_perp**2 / (2 x B)
 """
 import numpy as np
-import matplotlib.pyplot as plt 
-import a4py.preprocessing.filter_marker as a4fm 
-import a4py.postprocessing.read_magnbkg as rm
+import matplotlib.pyplot as plt
+import a4py.preprocessing.filter_marker as a4fm
+import a5py.ascot4interface.magn_bkg as rm
 import scipy.interpolate as interp
 from utils.plot_utils import common_style
 
@@ -23,42 +23,42 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
     """ COM boundaries
     Plot COM boundary spaces given bkg, hdr and Ekev
     """
-    hdr = rm.read_header(fname_hdr)
-    bkg = rm.read_bkg(fname_bkg)
+    data = rm.read_magn_bkg(fname_bkg, fname_hdr)
+    data = rm.read_magn_header(fname_hdr, data)
     E=Ekev*1000*1.602e-19
     
     # Getting psi_2d (Normalized to edge and axis value) and interpolate it
-    psiw = hdr['PFxx'][0]; psia=hdr['PFxx'][-1];
-    _R = bkg['R']
-    _z = bkg['z']
-    psi2d_param = interp.interp2d(_R, _z, (bkg['psi']-psia)/(psiw-psia))
+    psia = data['psi0']/(2*np.pi); psiw = data['psi1']/(2*np.pi);
+    _R = data['r']
+    _z = data['z']
+    psi2d_param = interp.interp2d(_R, _z, (1/(2*np.pi)*data['psi'].T-psia)/(psiw-psia))
     #psi2d_param_notnorm = interp.interp2d(_R, _z, eq.psi)
     # Finding the axis R0 of the device, which is the one to use to normalize
-    R0 = _R[np.argmin(psi2d_param(_R,0))]
-    psi_on_midplane = psi2d_param(_R,0)
+    R0 = _R[np.argmin(psi2d_param(_R,data['axis_z']))]
+    psi_on_midplane = psi2d_param(_R,data['axis_z'])
     R = _R[psi_on_midplane<1.] #R on midplane inside lcfs
     #T is as function of psi (equidistant)
-    B = bkg['Bphi']
+    B = data['bphi'].T
     #Forcing B to be positive and decreasing in R
     B = np.abs(B)
     B_param = interp.interp2d(_R, _z, B)
-    Bmin = np.min(B_param(R,0)); Bmax=np.max(B_param(R,0))
+    Bmin = np.min(B_param(R,data['axis_z'])); Bmax=np.max(B_param(R,data['axis_z']))
 
-    T_on_midplane = B_param(R,0)*R
+    T_on_midplane = B_param(R,data['axis_z'])*R
     T_param = interp.interp1d(R, T_on_midplane)
-    
+
     Rmin = min(R); Rmax=max(R)
-    B0 = B_param(R0, 0)[0]
+    B0 = B_param(R0, data['axis_z'])[0]
     #finding also extrema of g
     g_param=T_param
     gedge = np.abs(g_param(Rmax))
     g0 = np.abs(g_param(R0))
     # We want psi increasing from 0 to psi_wall
     psi=np.linspace(0,1, np.size(_R))
-    if psiw<psia or psiw==0:
-        psiw-=psia; psi-=psia; psia-=psia; # now stuff set from 0 to something.
-        if psiw<0: 
-            psiw=psiw*-1.; psi*=-1;
+    if psiw<psia or psiw<=0 or psia<0:
+        psiw-=psia; psia-=psia; # now stuff set from 0 to something.
+        if psiw<0:
+            psiw=psiw*-1.; #psi*=-1;
     ####################################################################
     #print values for debugging
     if debug:
@@ -66,7 +66,7 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
         print('Bmin={:.2f}; Bmax={:.2f}; B={:.2f}'.format(Bmin, Bmax, B0))
         print('gax={:.2f}; gedge={:.2f}; B0R0={:.2f}'.format(g0, gedge, R0*B0))
         print('psiw={:.2f}; psiax={:.2f}'.format(psiw, psia))
-        
+        print(psi)
     # get normalized units
     mp=1.67e-27; q=1.602e-19;
     A=2; Z=1;
@@ -100,15 +100,15 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
     #Right hand edge of midplane
     #These functions should plot mu/E. You must retrieve mu/E from equations at page
     # 85 of RW book
-    copss_lost = 1./Bmin-(1.+x)**2*(Bmin*psiw*psiw)/(2*gedge*gedge*E)
     # copss_lost*B0=1/(Bmin)-(Bmin/2.)*(psi**2*(1+x)**2)/(2*(R0*B0*gedge)**2*E)
-    cntrpss_lost = 1/Bmax-(Bmax)*(psiw**2*(1+x)**2)/(2*gedge**2*E)
+    copss_lost   = 1./Bmin - (Bmin)*(psiw**2*(1+x)**2)/(2*gedge*gedge*E)
+    cntrpss_lost = 1./Bmax - (Bmax)*(psiw**2*(1+x)**2)/(2*gedge*gedge*E)
     magaxis = 1-(x*psiw)**2/(2*E*g0**2)
     #Normalization
     #Trapped/passing boundary - UPPER
     trpp_up={}
     #step 1: find R(z=0, theta=0) at the psi wanted
-    psi_z0 = psi2d_param(R_notnorm[R_notnorm>=R0], 0)
+    psi_z0 = psi2d_param(R_notnorm[R_notnorm>=R0], data['axis_z'])
     #Normalization
     psi_z0 = np.abs(psi_z0/R0*R0*B0)
     psi_z0 = psi_z0[psi_z0<1.]
@@ -121,7 +121,7 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
     #Trapped/passing boundary - LOWER
     trpp_down={}
     #step 1: find R(z=0, theta=pi) at the psi wanted
-    psi_zpi = psi2d_param(R_notnorm[R_notnorm<=R0], 0)
+    psi_zpi = psi2d_param(R_notnorm[R_notnorm<=R0], data['axis_z'])
     #Normalization
     psi_zpi = np.abs(psi_zpi/R0*R0*B0)
     psi_zpi = psi_zpi[psi_zpi<1.]
@@ -129,6 +129,10 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
     # step 2 : find B at the R>R0, with normalizations
     B_thetapi = B_param(np.linspace(min(R_notnorm), R0, np.size(psi_zpi)), 0); B_thetapi/=B0;
     trpp_down['y'] = (1/B_thetapi);
+
+    if debug:
+        print('psi in LFS:',psi_z0)
+        print('psi in HFS:',psi_zpi)
 
     if plot:
         f=plt.figure(figsize=(8,6))
@@ -148,7 +152,7 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
         #f.savefig('COM_{:s}_E{:.2f}.png'.format(fname_eqdsk, Ekev), dpi=800)
     plt.show()
     
-    return hdr, bkg, R0, B0
+    return data, R0, B0
 
 def COM_markers(fname_particles, eq, Ekev):
     """
@@ -185,11 +189,11 @@ def COM_hdrbkg_markers(fname_particles='../examples/input.particles_pt_1e4',\
                         fname_bkg ='../examples/input.magn_bkg', Ekev=85):
     """
     """
-    hdr, bkg, R0, B0 = COM_hdrbkg(fname_hdr, fname_bkg, Ekev, 0,1)
+    data, R0, B0 = COM_hdrbkg(fname_hdr, fname_bkg, Ekev, 0,1)
     ax=plt.gca();
     eq = type('', (), {})()
     eq.R0EXP = R0; eq.B0EXP = B0;
-    eq.psiedge = hdr['PFxx'][0]; eq.psiaxis=hdr['PFxx'][-1];
+    eq.psiedge = data['psi1']; eq.psiaxis=data['psi0'];
 
     mm, pdict, angmom, mu, x,y = COM_markers(fname_particles, eq, Ekev)
     ind_pitchpos = np.where(pdict['pitch']>0.)[0]

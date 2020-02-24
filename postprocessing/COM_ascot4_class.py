@@ -13,51 +13,53 @@ mu = E_perp/B = m x V_perp**2 / (2 x B)
 """
 import numpy as np
 import matplotlib.pyplot as plt 
-import a4py.preprocessing.filter_marker as a4fm 
-import a4py.postprocessing.read_magnbkg as rm
+import a4py.classes.particles as a4p
+import a4py.classes.Bfield as a4b
 import scipy.interpolate as interp
 from utils.plot_utils import common_style
 
 common_style()
-def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
+def COM_a4(fname, Ekev, debug=0, plot=1):
     """ COM boundaries
     Plot COM boundary spaces given bkg, hdr and Ekev
     """
-    hdr = rm.read_header(fname_hdr)
-    bkg = rm.read_bkg(fname_bkg)
+    b = a4b.Bfield_ascot(fname)
     E=Ekev*1000*1.602e-19
     
     # Getting psi_2d (Normalized to edge and axis value) and interpolate it
-    psiw = hdr['PFxx'][0]; psia=hdr['PFxx'][-1];
-    _R = bkg['R']
-    _z = bkg['z']
-    psi2d_param = interp.interp2d(_R, _z, (bkg['psi']-psia)/(psiw-psia))
+    psiw = b.psiedge[0]; psia=b.psiaxis[0];
+    # TEMPORARY FIX
+    psia=-psia;
+    #
+    zaxis=b.vardict['zaxis']
+    _R = b.R
+    _z = b.z
+    psi2d_param = interp.interp2d(_R, _z, (b.psi-psia)/(psiw-psia))
     #psi2d_param_notnorm = interp.interp2d(_R, _z, eq.psi)
     # Finding the axis R0 of the device, which is the one to use to normalize
-    R0 = _R[np.argmin(psi2d_param(_R,0))]
-    psi_on_midplane = psi2d_param(_R,0)
+    R0 = _R[np.argmin(psi2d_param(_R,zaxis))]
+    psi_on_midplane = psi2d_param(_R,zaxis)
     R = _R[psi_on_midplane<1.] #R on midplane inside lcfs
     #T is as function of psi (equidistant)
-    B = bkg['Bphi']
+    B =  b.Bphi
     #Forcing B to be positive and decreasing in R
     B = np.abs(B)
     B_param = interp.interp2d(_R, _z, B)
-    Bmin = np.min(B_param(R,0)); Bmax=np.max(B_param(R,0))
+    Bmin = np.min(B_param(R,zaxis)); Bmax=np.max(B_param(R,zaxis))
 
-    T_on_midplane = B_param(R,0)*R
+    T_on_midplane = B_param(R,zaxis)*R
     T_param = interp.interp1d(R, T_on_midplane)
-    
-    psi_on_midplane = psi2d_param(_R,0)
-    R = _R[psi_on_midplane<1.] #R on midplane inside lcfs
+
     Rmin = min(R); Rmax=max(R)
-    B0 = B_param(R0, 0)[0]
+    B0 = B_param(R0, zaxis)[0]
     #finding also extrema of g
     g_param=T_param
     gedge = np.abs(g_param(Rmax))
-    g0 = np.abs(g_param(R0))    
+    g0 = np.abs(g_param(R0))
     # We want psi increasing from 0 to psi_wall
     psi=np.linspace(0,1, np.size(_R))
-    if psiw<psia or psiw==0:
+    print(psia, psiw)
+    if psiw<psia or psiw<=0 or psia<0:
         psiw-=psia; psi-=psia; psia-=psia; # now stuff set from 0 to something.
         if psiw<0: 
             psiw=psiw*-1.; psi*=-1;
@@ -148,16 +150,16 @@ def COM_hdrbkg(fname_hdr, fname_bkg, Ekev, debug=0, plot=1):
         ax.grid('on')
         f.tight_layout()
         #f.savefig('COM_{:s}_E{:.2f}.png'.format(fname_eqdsk, Ekev), dpi=800)
-    plt.show()
+        plt.show()
     
-    return hdr, bkg, R0, B0
+    return b, R0, B0
 
 def COM_markers(fname_particles, eq, Ekev):
     """
     """
     try:
         print('Read markers')
-        mm,_,_,_=a4fm.filter_marker(fname_particles, fname_out='')
+        p = a4p.h5_particles(fname_particles)
         #ind = mm[:,9]<-1.5e6 #filter on rho
         #v=np.sqrt(mm[:,9]**2+mm[:,10]**2+mm[:,11]**2)
         #pitch=mm[:,9]/v
@@ -168,7 +170,7 @@ def COM_markers(fname_particles, eq, Ekev):
         mm = None
         
     if mm is not None:
-        pdict=convert_arrpart_to_dict(mm)
+        pdict=convert_arrpart_to_dict(p)
         angmom=calculate_angmom(pdict, eq)
         mu=calculate_mu(pdict)
     else:
@@ -182,16 +184,15 @@ def COM_markers(fname_particles, eq, Ekev):
     y=mu*B0/(Ekev*1e3*1.602e-19)
     return mm, pdict, angmom, mu, x,y
 
-def COM_hdrbkg_markers(fname_particles='../examples/input.particles_pt_1e4',\
-                        fname_hdr ='../examples/input.magn_header',\
-                        fname_bkg ='../examples/input.magn_bkg', Ekev=85):
+def COM_a4_markers(fname_particles='../examples/input.particles_pt_1e4',\
+                        fname ='../examples/ascot_TCV.h5', Ekev=85):
     """
     """
-    hdr, bkg, R0, B0 = COM_hdrbkg(fname_hdr, fname_bkg, Ekev, 0,1)
+    b, R0, B0 = COM_a4(fname, Ekev, 0,1)
     ax=plt.gca();
     eq = type('', (), {})()
     eq.R0EXP = R0; eq.B0EXP = B0;
-    eq.psiedge = hdr['PFxx'][0]; eq.psiaxis=hdr['PFxx'][-1];
+    eq.psiedge = b.psiedge; eq.psiaxis=b.psiaxis;
 
     mm, pdict, angmom, mu, x,y = COM_markers(fname_particles, eq, Ekev)
     ind_pitchpos = np.where(pdict['pitch']>0.)[0]

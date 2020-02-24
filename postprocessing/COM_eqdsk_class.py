@@ -61,7 +61,7 @@ def COM_eqdsk(fname_eqdsk, Ekev, debug=1, plot=1):
     g0 = np.abs(g_param(0.))
     # We want psi increasing from 0 to psi_wall
     psi=eq.psi_grid
-    if psiw<psia or psiw==0:
+    if psiw<psia or psiw<=0 or psia<0:
         psiw-=psia; psi-=psia; psia-=psia; # now stuff set from 0 to something.
         if psiw<0: 
             psiw=psiw*-1.; psi*=-1;
