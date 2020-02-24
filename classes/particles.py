@@ -52,7 +52,10 @@ class particles:
         self.zsurf = []
         self.RZsurf = []
         self.Rsurf, self.zsurf, self.RZsurf = _RZsurf(fname_surf)
-        self.R_w, self.z_w = _readwall(self.device)
+        try:
+            self.R_w, self.z_w = _readwall(self.device)
+        except:
+            self.R_w, self.z_w = [0], [0]
         try:
             self.R0 = h5py.File(fname_surf)['misc/geomCentr_rz'][0]
             self.z0 = h5py.File(fname_surf)['misc/geomCentr_rz'][1]
@@ -216,16 +219,13 @@ class h5_particles(particles):
         """
         try:
             R=self.data_i['Rprt']
-            z=self.data_i['zprt']
             phi = self.data_i['phiprt']
         except:
             R=self.data_i['R']
-            z=self.data_i['z']
             phi = self.data_i['phi']
 
         if np.mean(R)==999. or np.mean(R)==-999.:
             R=self.data_i['R']
-            z=self.data_i['z']
             phi = self.data_i['phi']
 
         x=np.zeros(self.npart)
@@ -707,7 +707,7 @@ class SA_iniend(h5_particles):
                 for j, el in enumerate(R):
                     x[j] = el*math.cos(ang[j])
                     y[j] = el*math.sin(ang[j])
-                axxy.scatter(x,y,c=col[i])            
+                axxy.scatter(x,y,c=col[i])
                 axrz.scatter(R,z,c=col[i])
                 
         theta=np.arange(0,6.29,0.02*6.28)
@@ -830,9 +830,12 @@ def _readwall(device):
             in_w_fname = '/home/vallar/TCV_wall/input.wall_2d_FW'
         else:
             in_w_fname = '/home/vallar/ASCOT/runs/TCV/57850/input.wall_2d'
-
-    wall = np.loadtxt( in_w_fname, dtype=float, unpack=True, skiprows=1)
-            
+    try:
+        wall = np.loadtxt( in_w_fname, dtype=float, unpack=True, skiprows=1)
+    except:
+        R_w = [0]
+        z_w = [0]
+        return R_w, z_w
     R_w = wall[0,:]
     z_w = wall[1,:]
     R_w = np.array(R_w)

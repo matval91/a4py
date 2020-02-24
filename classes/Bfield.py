@@ -81,7 +81,7 @@ class Bfield_ascot:
                         "r":"/bfield/r", "z":"/bfield/z",\
                         "raxis":"/bfield/raxis", "zaxis":"/bfield/zaxis",\
                         "q":"/boozer/qprof", "psi_rho":"/boozer/psi",\
-                        "psi_sepa":"/boozer/psiSepa"}
+                        "psi_sepa":"/boozer/psiSepa", "psi_ax":"/boozer/psiAxis"}
         
 #                         "Babs":"/boozer/Babs", "I":"/boozer/Ifunc",\
 #                         "r_boo":"/boozer/R","axisR_boo":"/boozer/axisR", "axisZ_boo":"/boozer/axisz",\
@@ -99,16 +99,15 @@ class Bfield_ascot:
         self.infile_n = infile_name
         self.vardict = {}
         #store data with the correct labels
-        
         for k in self.labdict:
             self.vardict[k] = self.infile[self.labdict[k]].value
 
         self.nrho = self.vardict['psi_rho'].shape[0]
-        
         self.R = self.vardict['r'][:]
         self.z = self.vardict['z'][:]
         self.psi = self.vardict['psi_2D']
         self.psiedge = self.vardict['psi_sepa']
+        self.psiaxis = self.vardict['psi_ax']
         self.rhopsi = self.vardict['psi_rho'][:]**0.5
         self.q = self.vardict['q']
 
@@ -116,16 +115,20 @@ class Bfield_ascot:
 
         
         #these nR and nZ are from the group /bfield/, the ones for /boozer/ are on rho and theta (spacing of grid)
-        self.nR = self.vardict['nr'][:]        
+        self.nR = self.vardict['nr'][:]
         self.nZ = self.vardict['nz'][:]
 
         self.rmin=np.min(self.R)
         self.rmax=np.max(self.R)
         self.zmin=np.min(self.z)
         self.zmax=np.max(self.z)
-
-        self._read_wall_h5()
-
+        try:
+            self._read_wall_h5()
+        except:
+            print('Probably 3D wall')
+            self.R_w = [0]
+            self.z_w = [0]
+            
     def _read_wall_h5(self):
         """stores wall data from h5 file
         
@@ -142,8 +145,9 @@ class Bfield_ascot:
         self.walllabdict = {"R_wall":"/wall/2d/R", "Z_wall":"/wall/2d/z",\
                             "divflag":"/wall/2d/divFlag", "segLen":"/wall/2d/segLen"}
         self.w = dict.fromkeys(self.walllabdict)
+
         for k in self.walllabdict:
-            self.w[k] = self.infile[self.walllabdict[k]].value
+            self.w[k] = self.infile[self.walllabdict[k]][:]
         self.R_w = self.w['R_wall']
         self.z_w = self.w['Z_wall']
 
@@ -169,12 +173,13 @@ class Bfield_ascot:
         for key in ['Ip', 'b0','psiAtAxis', 'psiAtSeparatrix',\
                     'rmin','rmax','zmin','zmax']:
             print(key, " ", self.sanitydict[key])
-           
-            
+
+
     def plot_B(self,f=0 ):
         plot_input.plot_Bfield(self,f)
-        
-        
+
+
+
 class Bfield_eqdsk:
     """ Class handling eqdsk magnetic field
 
@@ -220,7 +225,7 @@ class Bfield_eqdsk:
         self.nR=len(self.R)
         self.nz=len(self.z)
         self.nR=nR
-        self.nz=nz        
+        self.nz=nz
 
     def _import_from_eqdsk(self, infile_eqdsk):
         """ importing from eqdsk
@@ -379,10 +384,9 @@ class Bfield_eqdsk:
         
         # find axis
         self.ax = self._min_grad(x0=[self.eqdsk.Raxis, self.eqdsk.Zaxis])
-        self.axflux = self.eqdsk.psiaxis*2.*np.pi
-        #self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*np.pi)
-        print('Axis', self.ax, ' Axis flux', self.axflux, self.eqdsk.psiaxis*2*np.pi)        
-        
+        #self.axflux = self.eqdsk.psiaxis*2.*np.pi
+        self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*np.pi); self.axflux=self.axflux[0]
+        print('Axis', self.ax, ' Axis flux', self.axflux, self.eqdsk.psiaxis*2*np.pi)
         print("remember: I am multiplying psi axis times 2pi since in ascot it divides by it!")
 
         # find 'xpoint' i.e. point on separatrix
@@ -391,9 +395,10 @@ class Bfield_eqdsk:
         
         print('X-point', self.xpoint, ' X-flux', self.xflux)
         # poloidal flux of the special points (only one in this case. For ascot5 you need 2)
-        self.hdr['PFxx'] = [self.xflux, self.axflux]
-        self.hdr['RPFx'] = [self.xpoint[0], self.ax[0]]
-        self.hdr['zPFx'] = [self.xpoint[1], self.ax[1]]
+        #First axis, then edge
+        self.hdr['PFxx'] = [self.axflux, self.xflux]
+        self.hdr['RPFx'] = [self.ax[0], self.xpoint[0]]
+        self.hdr['zPFx'] = [self.ax[1], self.xpoint[1]]
         self.hdr['SSQ']  = [self.eqdsk.R0EXP, self.eqdsk.Zaxis, 0, 0]
         
     def build_header_SN(self):
@@ -428,15 +433,15 @@ class Bfield_eqdsk:
         ax2d.axis('equal')
         x0 = plt.ginput()
         plt.close(f)
-        self.xpoint = self._min_grad(x0=x0)        
+        self.xpoint = self._min_grad(x0=x0)
         self.xflux = self.psi_coeff(self.xpoint[0], self.xpoint[1])*(2*np.pi)
         
         # find axis
-        self.ax = self._min_grad(x0=[self.eqdsk.Raxis, self.eqdsk.Zaxis])     
+        self.ax = self._min_grad(x0=[self.eqdsk.Raxis, self.eqdsk.Zaxis])
         self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*np.pi)
         print("remember: I am multiplying psi axis and x-point times 2pi since in ascot it divides by it!")
 
-        # poloidal flux of the special points.
+        # poloidal flux of the special points. First axis, then edge (i.e. X point)
         self.hdr['PFxx'] = [self.axflux[0][0], self.xflux[0][0]]
         self.hdr['RPFx'] = [self.ax[0], self.xpoint[0]]
         self.hdr['zPFx'] = [self.ax[1], self.xpoint[1]]
