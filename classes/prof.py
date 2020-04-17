@@ -1208,6 +1208,8 @@ class TCV_mds(profiles):
         for k in self.signals.keys():
             print('Reading signal ' + self.signals[k]['string'])
             tim = self._readsignal(self.signals[k]['string']).getDimensionAt(1).data()
+            if tim[0]==0:
+                tim = self._readsignal(r'dim_of('+self.signals[k]['string']+',1)').data()
             _idx = np.argmin(tim-self.t < 0)
             tim = tim[_idx]
             data = self._readsignal(self.signals[k]['string']).data()[_idx, :]
