@@ -1214,6 +1214,8 @@ class TCV_mds(profiles):
             tim = tim[_idx]
             data = self._readsignal(self.signals[k]['string']).data()[_idx, :]
             rhop = self._readsignal(self.signals[k]['string']).getDimensionAt(0).data()
+            if rhop[0]==0:
+                rhop = self._readsignal(r'dim_of('+self.signals[k]['string']+',0)').data()
             dummy = interpolate.interp1d(rhop, data, fill_value='extrapolate')
             self._brep[k] = dict([('spline', dummy)])
 
