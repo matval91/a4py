@@ -1137,6 +1137,13 @@ class TCV_mds(profiles):
         except:
             print("No Zeff set! setting it to 2.")
             self.zeff = 2.
+
+        try:
+            self.trialindx=indict['trialindx']
+        except:
+            print("No trialindx set! setting it to 1")
+            self.trialindx=1
+            
         self.nion = 2
         self.A = [2, 12 ]
         self.Z = [1, 6  ]
@@ -1150,9 +1157,9 @@ class TCV_mds(profiles):
         #                'te': {'string': r'\tcv_shot::top.results.thomson.profiles.auto:te'},
         #                'ti': {'string': r'\tcv_shot::top.results.cxrs.proffit:ti'}}
         
-        self.signals = {'ne': {'string': r'\tcv_shot::top.results.conf:ne'},
-                        'te': {'string': r'\tcv_shot::top.results.conf:te'},
-                        'ti': {'string': r'\tcv_shot::top.results.conf:ti'}}
+        self.signals = {'ne': {'string': r'\tcv_shot::top.results.conf:ne:trial'},
+                        'te': {'string': r'\tcv_shot::top.results.conf:te:trial'},
+                        'ti': {'string': r'\tcv_shot::top.results.conf:ti:trial'}}
 
         print("\n")
         print("===================")
@@ -1212,9 +1219,9 @@ class TCV_mds(profiles):
                 tim = self._readsignal(r'dim_of('+self.signals[k]['string']+',1)').data()
             _idx = np.argmin(tim-self.t < 0)
             tim = tim[_idx]
-            data = self._readsignal(self.signals[k]['string']).data()[_idx, :]
+            data = self._readsignal(self.signals[k]['string']).data()[self.trialindx, _idx, :]
             rhop = self._readsignal(self.signals[k]['string']).getDimensionAt(0).data()
-            if rhop[0]==0:
+            if rhop[1]==1:
                 rhop = self._readsignal(r'dim_of('+self.signals[k]['string']+',0)').data()
             dummy = interpolate.interp1d(rhop, data, fill_value='extrapolate')
             self._brep[k] = dict([('spline', dummy)])
