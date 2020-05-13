@@ -435,14 +435,14 @@ class Bfield_eqdsk:
         plt.close(f)
         self.xpoint = self._min_grad(x0=x0)
         self.xflux = self.psi_coeff(self.xpoint[0], self.xpoint[1])*(2*np.pi)
-        
         # find axis
         self.ax = self._min_grad(x0=[self.eqdsk.Raxis, self.eqdsk.Zaxis])
         self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*np.pi)
         print("remember: I am multiplying psi axis and x-point times 2pi since in ascot it divides by it!")
 
         # poloidal flux of the special points. First axis, then edge (i.e. X point)
-        self.hdr['PFxx'] = [self.axflux[0][0], self.xflux[0][0]]
+        self.hdr['PFxx'] = [self.axflux[0], self.xflux[0]]
+        print(self.hdr['PFxx'])
         self.hdr['RPFx'] = [self.ax[0], self.xpoint[0]]
         self.hdr['zPFx'] = [self.ax[1], self.xpoint[1]]
         self.hdr['SSQ']  = [self.eqdsk.R0EXP, self.eqdsk.Zaxis, 0, 0]
