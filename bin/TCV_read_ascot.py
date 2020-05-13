@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
+
 import a4py.classes.prof as a4p
 import a4py.classes.Bfield as a4b
-import os, re, getpass
-import glob, sys
+import os, re, getpass, sys
 
 if len(sys.argv) >= 3:
     shot = sys.argv[1]
@@ -13,6 +14,7 @@ else:
     print("Files (i.e. EQDSK) will be looked for in folder, if given ")
     print('\n e.g. \n TCV_read_ascot.py 62124 1.3 /tmp/vallar \n')
     sys.exit()
+
 eqid='{}_t{:1.4f}'.format(shot, time)
 # deal with specific folder
 try:
