@@ -202,7 +202,8 @@ class profiles:
             None
 
         """
-        x = np.linspace(1.001, 1.2, self.nrho/5)
+        maxrho = self.maxrho
+        x = np.linspace(1.001, maxrho, self.nrho/5)
         rho1 = self.rho # rho up to 1
         dec_l = 0.01
         ni_ov = np.zeros((self.nion, len(x)), dtype=float)
@@ -1113,6 +1114,8 @@ class TCV_mds(profiles):
             |  'shot' (int): shot number,
             |  't' (float): time
             |  'nrho' (int): number of rho points to use as output (up to 1, outside rho is 1/5 of nrho)
+            |  'maxrho' (float, optional): maximum rho to extrapolate profiles
+            |  'trialindex' (int, optional): index of trial in MDS tree
             |  'zeff' (float, optional): zeff in that time instant
     Arguments:
         None
@@ -1137,6 +1140,11 @@ class TCV_mds(profiles):
         except:
             print("No Zeff set! setting it to 2.")
             self.zeff = 2.
+        try:
+            self.maxrho = indict['maxrho']
+        except:
+            print("No max rho set! setting it to 1.2")
+            self.maxrho = 1.2
 
         try:
             self.trialindx=indict['trialindx']
