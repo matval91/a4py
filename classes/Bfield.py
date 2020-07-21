@@ -384,8 +384,8 @@ class Bfield_eqdsk:
         
         # find axis
         self.ax = self._min_grad(x0=[self.eqdsk.Raxis, self.eqdsk.Zaxis])
-        #self.axflux = self.eqdsk.psiaxis*2.*np.pi
-        self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*np.pi); self.axflux=self.axflux[0]
+        self.axflux = self.eqdsk.psiaxis*2.*np.pi
+        #self.axflux = self.psi_coeff(self.ax[0], self.ax[1])*(2*np.pi); self.axflux=self.axflux[0]
         print('Axis', self.ax, ' Axis flux', self.axflux, self.eqdsk.psiaxis*2*np.pi)
         print("remember: I am multiplying psi axis times 2pi since in ascot it divides by it!")
 
@@ -474,7 +474,6 @@ class Bfield_eqdsk:
         #z_temp = np.linspace(float(np.around(np.min(self.z_w), decimals=2)), float(np.around(np.max(self.z_w), decimals=2)), self.nz)
 
         psitemp = self.psi_coeff(R_temp, z_temp)
-        #psitemp = self.psi_coeff(R_temp, z_temp)
 
         bphitemp = self.param_bphi(R_temp, z_temp)
 
@@ -499,19 +498,31 @@ class Bfield_eqdsk:
         Attributes:
             None
         """
-        psi = self.eqdsk.psi
-        self.dpsidR = np.zeros((self.eqdsk.nzbox, self.eqdsk.nrbox))
-        self.dpsidZ = np.zeros((self.eqdsk.nzbox, self.eqdsk.nrbox))
-        
+        try:
+            self.bkg['psi'].mean()
+        except:
+            self.build_bkg()
+            
+        # psi = self.eqdsk.psi
+        # self.dpsidR = np.zeros((self.eqdsk.nzbox, self.eqdsk.nrbox))
+        # self.dpsidZ = np.zeros((self.eqdsk.nzbox, self.eqdsk.nrbox))
+        psi = self.bkg['psi']
+        self.dpsidR = np.zeros((self.nz, self.nR))
+        self.dpsidZ = np.zeros((self.nz, self.nR))        
         deriv = np.gradient(psi)
         # Note np.gradient gives y
         # derivative first, then x derivative
         ddR = deriv[1]
         ddZ = deriv[0]
-        dRdi = np.asarray(1.0)/np.gradient(self.R_eqd)
-        dRdi = np.tile(dRdi, [self.eqdsk.nzbox,1])
-        dZdi = np.asarray(1.0)/np.gradient(self.Z_eqd)
-        dZdi = np.tile(dZdi, [self.eqdsk.nrbox,1])
+        # dRdi = np.asarray(1.0)/np.gradient(self.R_eqd)
+        # dRdi = np.tile(dRdi, [self.eqdsk.nzbox,1])
+        # dZdi = np.asarray(1.0)/np.gradient(self.Z_eqd)
+        # dZdi = np.tile(dZdi, [self.eqdsk.nrbox,1])
+        # dZdi = np.transpose(dZdi)
+        dRdi = np.asarray(1.0)/np.gradient(self.bkg['R'])
+        dRdi = np.tile(dRdi, [self.nz,1])
+        dZdi = np.asarray(1.0)/np.gradient(self.bkg['z'])
+        dZdi = np.tile(dZdi, [self.nR,1])
         dZdi = np.transpose(dZdi)
         #print("shape ddR:",np.shape(ddR),'shape dRdi:', np.shape(dRdi))
         #print('shape ddZ:',np.shape(ddZ),'shape dZdi:', np.shape(dZdi))
@@ -538,9 +549,12 @@ class Bfield_eqdsk:
 
         sp_dr = self.dpsidR
         sp_dz = self.dpsidZ
-        R = self.R_eqd
-        z = self.Z_eqd
-
+        
+        # R = self.R_eqd
+        # z = self.Z_eqd
+        R = self.bkg['R']
+        z=self.bkg['z']
+        
         val_dr = interp.interp2d(R, z, sp_dr)
         val_dz = interp.interp2d(R, z, sp_dz)
         fun= lambda x: val_dr(x[0], x[1])**2 +val_dz(x[0], x[1])**2
