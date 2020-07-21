@@ -210,9 +210,10 @@ class Bfield_eqdsk:
         |  calc_field: Function to calculate toroidal fields (fields on poloidal plane set to 0
     """
     
-    def __init__(self, infile, nR=259, nz=259, devnam=None, COCOS=2, *args):
+    def __init__(self, infile, nR=259, nz=259, devnam=None, COCOS=2, extend_psi_R=0.0, *args):
         self.COCOS = COCOS
         self.devnam = devnam
+        self.extend_psi_R = extend_psi_R
         self._read_wall()
         self._import_from_eqdsk(infile)
         #these are the dimensions of the output arrays
@@ -272,7 +273,7 @@ class Bfield_eqdsk:
         """    
         self.eqdsk= ReadEQDSK.ReadEQDSK(infile_eqdsk)
         self.infile = infile_eqdsk
-        self.R_eqd = np.linspace(self.eqdsk.rboxleft, self.eqdsk.rboxleft+self.eqdsk.rboxlength, self.eqdsk.nrbox)
+        self.R_eqd = np.linspace(self.eqdsk.rboxleft, self.eqdsk.rboxleft+self.eqdsk.rboxlength+self.extend_psi_R, self.eqdsk.nrbox)
         self.Z_eqd = np.linspace(-self.eqdsk.zboxlength/2., self.eqdsk.zboxlength/2., self.eqdsk.nzbox)
         self._cocos_transform(self.COCOS)
         self.psi_coeff = interp.interp2d(self.R_eqd, self.Z_eqd, self.eqdsk.psi)
@@ -468,7 +469,7 @@ class Bfield_eqdsk:
 
         print("Build bkg")
 
-        R_temp = np.linspace(self.eqdsk.rboxleft, self.eqdsk.rboxleft+self.eqdsk.rboxlength, self.nR)
+        R_temp = np.linspace(self.eqdsk.rboxleft, self.eqdsk.rboxleft+self.eqdsk.rboxlength+self.extend_psi_R, self.nR)
         z_temp = np.linspace(-self.eqdsk.zboxlength/2., self.eqdsk.zboxlength/2., self.nz)
         #R_temp = np.linspace(float(np.around(np.min(self.R_w), decimals=2)), float(np.around(np.max(self.R_w), decimals=2)), self.nR)
         #z_temp = np.linspace(float(np.around(np.min(self.z_w), decimals=2)), float(np.around(np.max(self.z_w), decimals=2)), self.nz)
