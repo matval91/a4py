@@ -116,8 +116,8 @@ class profiles:
             data = np.concatenate([data, [self.ni[i,:] for i in range(self.nion)]])
 
             data=np.transpose(data)
-            print(data)
-            print("if i don't print, it won't work")
+            #print(data)
+            #print("if i don't print, it won't work")
             np.savetxt(outfile, data, fmt='%.5e')
 
     def compute_average(self):
@@ -202,7 +202,7 @@ class profiles:
             None
 
         """
-        x = np.linspace(1.001, 1.2, self.nrho/5)
+        x = np.linspace(1.001, 1.5, self.nrho/5)
         rho1 = self.rho # rho up to 1
         dec_l = 0.01
         ni_ov = np.zeros((self.nion, len(x)), dtype=float)
@@ -1023,82 +1023,6 @@ class SA_datfiles_datascenario(profiles):
         psi = psi/max(psi)
         self.param_psi = interpolate.interp1d(self.rhotor, psi)   
 
-        #tmpnum=100000
-        # locq   = self.param_q(np.linspace(0,1,tmpnum)) #augmenting precision near the core
-        # locphi = np.linspace(0,1,tmpnum)
-        # psi = integrate.cumtrapz(1/locq,locphi)
-        # psi = np.concatenate([[0], psi])
-        # psi = psi/max(psi)
-        # rhopsi = psi**0.5
-        # self.param_psi = interpolate.interp1d(np.linspace(0,1,tmpnum), rhopsi)
-
-
-class TCV_datfiles(profiles):
-    """
-    Reads a dat file with the columns as follows:
-    rho pol, ne [m^-3], te[eV], ti[eV]
-    """
-    def __init__(self, infile, **kwargs):
-        profiles.__init__(self)
-        
-        self.A = [2, 12]
-        self.Z = [1, 6]
-        self.nion = 2
-        #self.ni_in = np.zeros((self.nion, 2, self.nrho), dtype=float)
-
-        
-        lines = np.loadtxt(infile, skiprows=1, unpack=True)
-        self.rho_in = lines[0,:] #already poloidal rho
-        self.nrho_in = len(self.rho_in)
-        self.rho = self.rho_in
-        self.nrho = self.nrho_in
-        self.ne_in  = lines[1,:]
-        self.te_in  = lines[2,:]
-        self.ti_in  = lines[3,:]
-
-        self.ni = np.zeros((self.nion, self.nrho), dtype=float)
-        self.vt = np.zeros((self.nrho), dtype=float)
-        self.coll_mode = np.ones(self.nion, dtype=float)
-        
-        if 'ZEFF' in kwargs:
-            self.zeff_in = np.full((self.nrho_in), kwargs['ZEFF'], dtype = float)
-            print("Set Zeff from argument ZEFF: "+str(kwargs['ZEFF']))
-        else:
-            print('Zeff not set, putting it to 0')
-            self.zeff_in = np.zeros(self.nrho_in, dtype = float)
-
-        self.ni_in  = np.zeros((self.nion, len(self.rho_in)),dtype=float)
-        self.ni = np.zeros((self.nion, self.nrho), dtype=float)
-        if len(self.Z)>1:
-            self._ion_densities()
-        self.smooth()
-
-    def smooth(self):
-        """ spline input data to grid wanted
-        
-        For each variable the input array is splined and put in output to
-        desired grid. This is specific for h5 files
-
-        Parameters:
-            None
-        Attributes:
-            None
-        
-        Note:
-            The _extrapolate private method is called
-        
-        """
-        self.te = self._spline(self.rho_in, self.te_in, self.rho)
-        self.ne = self._spline(self.rho_in, self.ne_in, self.rho)
-        self.ti = self._spline(self.rho_in, self.ti_in, self.rho)
-        for i in range(self.nion):
-            self.ni[i,:]=self._spline(self.rho_in, self.ni_in[i,:], self.rho)
-
-        self.zeff = self._spline(self.rho_in, self.zeff_in, self.rho)
-
-        self._extrapolate()
-
-
 class TCV_mds(profiles):
     """ Reads profiles from TCV tree
 
@@ -1117,10 +1041,6 @@ class TCV_mds(profiles):
     Arguments:
         None
     Notes:
-        |  'ne':'tcv_shot::top.results.thomson.profiles.auto:ne'
-        |  'te':'tcv_shot::top.results.thomson.profiles.auto:te'
-        |  'ti':'tcv_shot::top.results.cxrs.proffit:ti'
-
         |  'ne': 'tcv_shot::top.results.conf:ne'
         |  'te': 'tcv_shot::top.results.conf:te'
         |  'ti': 'tcv_shot::top.results.conf:ti'
@@ -1153,10 +1073,6 @@ class TCV_mds(profiles):
 
         # we build the appropriate dictionary similarly to what done
         # for the 1D signal
-        #self.signals = {'ne': {'string': r'\tcv_shot::top.results.thomson.profiles.auto:ne'},
-        #                'te': {'string': r'\tcv_shot::top.results.thomson.profiles.auto:te'},
-        #                'ti': {'string': r'\tcv_shot::top.results.cxrs.proffit:ti'}}
-        
         self.signals = {'ne': {'string': r'\tcv_shot::top.results.conf:ne:trial'},
                         'te': {'string': r'\tcv_shot::top.results.conf:te:trial'},
                         'ti': {'string': r'\tcv_shot::top.results.conf:ti:trial'}}
