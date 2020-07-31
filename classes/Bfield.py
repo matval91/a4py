@@ -379,7 +379,7 @@ class Bfield_eqdsk:
         dummy=np.linspace(0,1,nrho)
         
         self.hdr={'nSHOT':0,'tSHOT':0,'modflg':0,'FPPkat':0,'IpiFPP':self.eqdsk.Ip,\
-                  'PFxx':[],'RPFx':[],'zPFx':[],'SSQ':[], 'devnam':self.devnam,\
+                  'PFxx':np.array([]),'RPFx':np.array([]),'zPFx':np.array([]),'SSQ':np.array([]), 'devnam':self.devnam,\
                   'rhoPF':nrho,'PFL':dummy,'Vol':dummy,'Area':dummy,'Qpl':dummy} 
         
         # find axis
@@ -396,10 +396,10 @@ class Bfield_eqdsk:
         print('X-point', self.xpoint, ' X-flux', self.xflux)
         # poloidal flux of the special points (only one in this case. For ascot5 you need 2)
         #First axis, then edge
-        self.hdr['PFxx'] = [self.axflux, self.xflux]
-        self.hdr['RPFx'] = [self.ax[0], self.xpoint[0]]
-        self.hdr['zPFx'] = [self.ax[1], self.xpoint[1]]
-        self.hdr['SSQ']  = [self.eqdsk.R0EXP, self.eqdsk.Zaxis, 0, 0]
+        self.hdr['PFxx'] = np.array([self.axflux, self.xflux])
+        self.hdr['RPFx'] = np.array([self.ax[0], self.xpoint[0]])
+        self.hdr['zPFx'] = np.array([self.ax[1], self.xpoint[1]])
+        self.hdr['SSQ']  = np.array([self.eqdsk.R0EXP, self.eqdsk.Zaxis, 0, 0])
         
     def build_header_SN(self):
         """ building SN header
@@ -421,7 +421,7 @@ class Bfield_eqdsk:
         dummy=np.linspace(0,1,nrho)
         
         self.hdr={'nSHOT':0,'tSHOT':0,'modflg':0,'FPPkat':0,'IpiFPP':self.eqdsk.Ip,\
-                  'PFxx':[],'RPFx':[],'zPFx':[],'SSQ':[], 'devnam':self.devnam,\
+                  'PFxx':np.array([]),'RPFx':np.array([]),'zPFx':np.array([]),'SSQ':np.array([]), 'devnam':self.devnam,\
                   'rhoPF':nrho,'PFL':dummy,'Vol':dummy,'Area':dummy,'Qpl':dummy} 
 
         #Find x-point
@@ -441,11 +441,11 @@ class Bfield_eqdsk:
         print("remember: I am multiplying psi axis and x-point times 2pi since in ascot it divides by it!")
 
         # poloidal flux of the special points. First axis, then edge (i.e. X point)
-        self.hdr['PFxx'] = [self.axflux[0], self.xflux[0]]
+        self.hdr['PFxx'] = np.array([self.axflux[0], self.xflux[0]])
         print(self.hdr['PFxx'])
-        self.hdr['RPFx'] = [self.ax[0], self.xpoint[0]]
-        self.hdr['zPFx'] = [self.ax[1], self.xpoint[1]]
-        self.hdr['SSQ']  = [self.eqdsk.R0EXP, self.eqdsk.Zaxis, 0, 0]
+        self.hdr['RPFx'] = np.array([self.ax[0], self.xpoint[0]])
+        self.hdr['zPFx'] = np.array([self.ax[1], self.xpoint[1]])
+        self.hdr['SSQ']  = np.array([self.eqdsk.R0EXP, self.eqdsk.Zaxis, 0, 0])
         
     def build_bkg(self):
         """ build bkg
