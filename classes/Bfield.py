@@ -273,7 +273,7 @@ class Bfield_eqdsk:
         """    
         self.eqdsk= ReadEQDSK.ReadEQDSK(infile_eqdsk)
         self.infile = infile_eqdsk
-        self.R_eqd = np.linspace(self.eqdsk.rboxleft, self.eqdsk.rboxleft+self.eqdsk.rboxlength+self.extend_psi_R, self.eqdsk.nrbox)
+        self.R_eqd = np.linspace(self.eqdsk.rboxleft, self.eqdsk.rboxleft+self.eqdsk.rboxlength, self.eqdsk.nrbox)
         self.Z_eqd = np.linspace(-self.eqdsk.zboxlength/2., self.eqdsk.zboxlength/2., self.eqdsk.nzbox)
         self._cocos_transform(self.COCOS)
         self.psi_coeff = interp.interp2d(self.R_eqd, self.Z_eqd, self.eqdsk.psi)
