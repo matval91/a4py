@@ -203,7 +203,7 @@ class profiles:
 
         """
         maxrho = self.maxrho
-        x = np.linspace(1.001, maxrho, self.nrho/5)
+        x = np.linspace(1.001, maxrho, int(self.nrho/5))
         rho1 = self.rho # rho up to 1
         dec_l = 0.01
         ni_ov = np.zeros((self.nion, len(x)), dtype=float)
