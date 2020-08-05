@@ -68,6 +68,7 @@ def plot_profiles(prof, fig=0, title=''):
 
         fig.tight_layout() # Or equivalently,  "plt.tight_layout()"
     plt.show()
+    plt.pause(0.0001) #needed for interactive plotting
     return fig, axne,axni,axte,axti
 
 def plot_Bfield(B, fig=0, title=''):
