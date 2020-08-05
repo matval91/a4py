@@ -1227,7 +1227,7 @@ class TCV_mds(profiles):
     def plot_tcv(self):
         """ plot with title shot,time
         """
-        self._plot_time('Shot #{:d} @ t={:.2f} s'.format(self.shot, self.time))
+        self._plot_time('Shot #{:d} @ t={:.2f} s'.format(self.shot, self.t))
 
 class input_datfiles(profiles):
     """
