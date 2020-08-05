@@ -154,7 +154,7 @@ class profiles:
 
         """
         tit=str(tit)
-        fig, _,_,_,_ = self.plot_profiles()
+        fig, axne,axni,axte,axti = self.plot_profiles()
         fig.suptitle(tit)
         
     def plot_profiles(self, fig=0):
