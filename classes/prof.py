@@ -154,8 +154,9 @@ class profiles:
 
         """
         tit=str(tit)
-        self.plot_profiles()
-
+        fig, _,_,_,_ = self.plot_profiles()
+        fig.suptitle(tit)
+        
     def plot_profiles(self, fig=0):
         """Plot the profiles
         
@@ -1223,6 +1224,11 @@ class TCV_mds(profiles):
         suffix = '_'+str(self.shot)+'_'+str(int(self.t*1e3))
         self.write_input(suffix=suffix)
         
+    def plot_tcv(self):
+        """ plot with title shot,time
+        """
+        self._plot_time('Shot #{:d} @ t={:.2f} s'.format(self.shot, self.time)):
+
 class input_datfiles(profiles):
     """
     Reads an input.plasma_1d file:

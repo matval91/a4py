@@ -68,6 +68,7 @@ def plot_profiles(prof, fig=0, title=''):
 
         fig.tight_layout() # Or equivalently,  "plt.tight_layout()"
     plt.show()
+    return fig, axne,axni,axte,axti
 
 def plot_Bfield(B, fig=0, title=''):
     """plot of 2D psi, q, bphi
