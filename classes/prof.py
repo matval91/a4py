@@ -140,24 +140,7 @@ class profiles:
         print('average ne (10e20 m-3): ', ne_avg*1.e-20)
         print('average te (      keV): ', te_avg*1.e-3)
         
-
-    def _plot_time(self, tit):
-        """function to plot with title
-
-        This function uses the plot_profiles function to plot the profiles with a title
-
-        Parameters:
-            tit (str): title wanted on the plot (usually time)
-
-        Returns:
-            None
-
-        """
-        tit=str(tit)
-        fig, axne,axni,axte,axti = self.plot_profiles()
-        fig.suptitle(tit)
-        
-    def plot_profiles(self, fig=0):
+    def plot_profiles(self, fig=0, title=''):
         """Plot the profiles
         
         This function makes a plot with ne, Te, Ti, ni(eventually nimp) on 4 different frames
@@ -169,7 +152,7 @@ class profiles:
             None
 
         """
-        plot_input.plot_profiles(self, fig)
+        plot_input.plot_profiles(self, fig, title)
 
 
     def _spline(self,rho,data, rho_new):
@@ -1227,7 +1210,7 @@ class TCV_mds(profiles):
     def plot_tcv(self):
         """ plot with title shot,time
         """
-        self._plot_time('Shot #{:d} @ t={:.2f} s'.format(self.shot, self.t))
+        self.plot_profiles(0, title='Shot #{:d} @ t={:.2f} s'.format(self.shot, self.t))
 
 class input_datfiles(profiles):
     """

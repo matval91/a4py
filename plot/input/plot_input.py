@@ -31,7 +31,7 @@ def plot_profiles(prof, fig=0, title=''):
     ls = '-'
     if fig==0:
         w, h = plt.figaspect(0.8)
-        fig=plt.figure(title, figsize=(10,8))
+        fig=plt.figure('ASCOT profiles - {:s}'.format(title), figsize=(10,8))
         axte = fig.add_subplot(221)
         axne = fig.add_subplot(222, sharex=axte)
         axti = fig.add_subplot(223, sharey=axte, sharex=axte)
@@ -67,8 +67,8 @@ def plot_profiles(prof, fig=0, title=''):
         au.limit_labels(axni, r'$\rho_{pol}$', r'$n_i$ [1/$m^3$]')
 
         fig.tight_layout() # Or equivalently,  "plt.tight_layout()"
+    axte.set_title(title)
     plt.show()
-    plt.pause(0.0001) #needed for interactive plotting
     return fig, axne,axni,axte,axti
 
 def plot_Bfield(B, fig=0, title=''):
