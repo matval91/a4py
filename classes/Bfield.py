@@ -289,7 +289,7 @@ class Bfield_eqdsk:
         
         """
         cocos.cocos_transform(self.eqdsk, COCOS, 5, \
-                              sigma_ip_out=np.sign(self.eqdsk.Ip), sigma_b0_out=np.sign(self.eqdsk.B0EXP))
+                              sigma_ip_out=-1.*np.sign(self.eqdsk.Ip), sigma_b0_out=-1.*np.sign(self.eqdsk.B0EXP))
 
     def plot_B(self, f=0):
         """plot of 2D psi, q, bphi
